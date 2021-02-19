@@ -190,28 +190,34 @@ namespace LightConversion.Protocols.LcFind {
                     response = new Response(true, true, responseBuilder.ToString());
                 }
             } else if (receivedMessage.StartsWith($"CONFReq=1;HWADDR={_hwAddress};")) {
-                var requestResult = "";
+                var isOk = NetworkConfiguration.TryFromResponseString(receivedMessage, out var receivedConfiguration, out var requestResult);
 
-                var isOk = NetworkConfiguration.TryFromResponseString(receivedMessage, out var receivedConfiguration);
+                if (isOk) {
+                    if (IsNewIpValid(receivedConfiguration.IpAddress) == false) {
+                        isOk = false;
+                        requestResult = "Cannot use this IP address";
+                    }
+                }
 
                 if (isOk) {
                     if (_trySetNetworkConfigurationDelegate(receivedConfiguration)) {
-                        requestResult = "Ok";
                         _cooldownCounter = CooldownTimeout;
+                        requestResult = "Ok";
                         ActualStatus = Status.Cooldown;
                     } else {
-                        requestResult = "Error";
+                        requestResult = "Unable to set requested configuration";
                         ActualStatus = Status.Ready;
                     }
-                } else {
-                    requestResult = "InvalidData";
-                    ActualStatus = Status.Ready;
                 }
 
                 responseBuilder.Append("CONF=1;");
+#warning _hwaddress should become a property maybe?..
                 responseBuilder.Append($"HWADDR={_hwAddress};");
                 responseBuilder.Append($"Status={ActualStatus};");
-                if (requestResult == "Ok") {
+                responseBuilder.Append($"Result={requestResult};");
+
+                if (isOk) {
+#warning What is the point in getting configuration, when, at this point, settings reported OK?
                     if (_tryGetNetworkConfigurationDelegate(out var actualConfig)) {
                         if (actualConfig.IsDhcpEnabled) {
                             responseBuilder.Append("NetworkMode=DHCP;");
@@ -233,57 +239,20 @@ namespace LightConversion.Protocols.LcFind {
             return response;
         }
 
-        private static string GetParameterFromSeggerString(string seggerString, string parameterName) {
-            var parts = seggerString.Split(';');
+        private bool IsNewIpValid(IPAddress newIpAddress) {
+            var newIpBytes = newIpAddress.GetAddressBytes();
+            var noEmptyAddress = newIpBytes[0] != 0 || newIpBytes[1] != 0 || newIpBytes[2] != 0 || newIpBytes[3] != 0;
+            var noLoopback = newIpBytes[0] != 127;
+            var noLinkLocal = newIpBytes[0] != 169 || newIpBytes[1] != 254;
+            var noTestNet1 = newIpBytes[0] != 192 || newIpBytes[1] != 0;
+            var noIpv6Relay = newIpBytes[0] != 192 || newIpBytes[1] != 88 || newIpBytes[2] != 99;
+            var noTestNet2 = newIpBytes[0] != 198;
+            var noTestNet3 = newIpBytes[0] != 203;
+            var noMulticast = newIpBytes[0] != 224;
+            var noReserved = newIpBytes[0] != 240;
+            var noBroadcast = newIpBytes[0] != 255 || newIpBytes[1] != 255 || newIpBytes[2] != 255 || newIpBytes[3] != 255;
 
-            for (var i = 0; i < parts.Length; i++) {
-                if (parts[i].StartsWith($"{parameterName}=")) {
-                    return parts[i].Substring(parameterName.Length + 1).Trim('\0', ' ', '\r', '\n');
-                }
-            }
-
-            return "";
-        }
-
-        private bool IsNewIpValid(string newIpAddressString) {
-            var isNewIpGood = IPAddress.TryParse(newIpAddressString, out var newIpAddress);
-            if (isNewIpGood) {
-                var newIpBytes = newIpAddress.GetAddressBytes();
-                var noEmptyAddress = newIpBytes[0] != 0 || newIpBytes[1] != 0 || newIpBytes[2] != 0 || newIpBytes[3] != 0;
-                var noLoopback = newIpBytes[0] != 127;
-                var noLinkLocal = newIpBytes[0] != 169 || newIpBytes[1] != 254;
-                var noTestNet1 = newIpBytes[0] != 192 || newIpBytes[1] != 0;
-                var noIpv6Relay = newIpBytes[0] != 192 || newIpBytes[1] != 88 || newIpBytes[2] != 99;
-                var noTestNet2 = newIpBytes[0] != 198;
-                var noTestNet3 = newIpBytes[0] != 203;
-                var noMulticast = newIpBytes[0] != 224;
-                var noReserved = newIpBytes[0] != 240;
-                var noBroadcast = newIpBytes[0] != 255 || newIpBytes[1] != 255 || newIpBytes[2] != 255 || newIpBytes[3] != 255;
-                return noEmptyAddress && noLoopback && noLinkLocal && noTestNet1 && noIpv6Relay && noTestNet2 && noTestNet3 && noMulticast && noReserved && noBroadcast;
-            } else {
-                return false;
-            }
-        }
-
-        private bool IsNewMaskValid(string newSubnetMaskString) {
-            var isNewMaskGood = IPAddress.TryParse(newSubnetMaskString, out var newSubnetMask);
-            if (isNewMaskGood) {
-                var newMaskBytes = newSubnetMask.GetAddressBytes();
-                Array.Reverse(newMaskBytes);
-                var newMask = BitConverter.ToUInt32(newMaskBytes, 0);
-                // Shifting the mask to check if there are no set bits after the first unset bit.
-                while ((newMask & 0x80000000) == 0x80000000) {
-                    newMask <<= 1;
-                }
-
-                if (newMask == 0) {
-                    return true;
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
+            return noEmptyAddress && noLoopback && noLinkLocal && noTestNet1 && noIpv6Relay && noTestNet2 && noTestNet3 && noMulticast && noReserved && noBroadcast;
         }
 
         private class Response {

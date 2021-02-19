@@ -12,8 +12,9 @@ namespace LightConversion.Protocols.LcFind {
         public IPAddress GatewayAddress = IPAddress.None;
         public string MacAddress = "";
 
-        public static bool TryFromResponseString(string responseString, out NetworkConfiguration parsedConfiguration) {
+        public static bool TryFromResponseString(string responseString, out NetworkConfiguration parsedConfiguration, out string errorMessage) {
             var isOk = true;
+            errorMessage = "Ok";
             parsedConfiguration = new NetworkConfiguration();
 
             // Splitting response into key=value pairs.
@@ -23,6 +24,7 @@ namespace LightConversion.Protocols.LcFind {
             foreach (var part in parts) {
                 if (part.Split('=').Length != 2) {
                     isOk = false;
+                    errorMessage = "Invalid key-value pair";
                 }
             }
 
@@ -37,20 +39,43 @@ namespace LightConversion.Protocols.LcFind {
                         } else if (keyValue[1].ToLower() == "static") {
                             parsedConfiguration.IsDhcpEnabled = false;
                         } else {
-                            isOk &= false;
+                            isOk = false;
+                            errorMessage = "Unrecognized network mode setting";
                         }
                     }
 
                     if (keyValue[0] == "ip") {
-                        isOk &= IPAddress.TryParse(keyValue[1], out parsedConfiguration.IpAddress);
+                        if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.IpAddress) == false) {
+                            isOk = false;
+                            errorMessage = "Malformed IP address setting";
+                        }
                     }
 
                     if (keyValue[0] == "mask") {
-                        isOk &= IPAddress.TryParse(keyValue[1], out parsedConfiguration.SubnetMask);
+                        if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.SubnetMask) == false) {
+                            isOk = false;
+                            errorMessage = "Malformed mask setting";
+                        } else {
+                            var newMaskBytes = parsedConfiguration.SubnetMask.GetAddressBytes();
+                            Array.Reverse(newMaskBytes);
+                            var newMask = BitConverter.ToUInt32(newMaskBytes, 0);
+                            // Shifting the mask to check if there are no set bits after the first unset bit.
+                            while ((newMask & 0x80000000) == 0x80000000) {
+                                newMask <<= 1;
+                            }
+
+                            if (newMask != 0) {
+                                isOk = false;
+                                errorMessage = "Malformed mask setting";
+                            }
+                        }
                     }
 
                     if (keyValue[0] == "gateway") {
-                        isOk &= IPAddress.TryParse(keyValue[1], out parsedConfiguration.GatewayAddress);
+                        if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.GatewayAddress) == false) {
+                            isOk = false;
+                            errorMessage = "Malformed gateway address setting";
+                        }
                     }
 
                     if (keyValue[0] == "hwaddr") {
