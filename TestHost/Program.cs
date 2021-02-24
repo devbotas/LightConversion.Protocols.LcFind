@@ -39,6 +39,7 @@ namespace TestHost {
             Console.WriteLine($"Network interface is {_networkInterface}.");
 
             lcFindHost.Initialize(TrySetFakeNetworkConfiguration, TryGetFakeNetworkConfiguration);
+            lcFindHost.EnableReconfiguration();
             Console.WriteLine("Initialization completed. Listening.");
             Console.WriteLine("Hit Enter to quit.");
 

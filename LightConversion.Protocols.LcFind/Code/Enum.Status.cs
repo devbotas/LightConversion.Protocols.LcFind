@@ -2,6 +2,7 @@
     public enum Status {
         Ready,
         AwaitingConfirmation,
-        Cooldown
+        Cooldown,
+        Disabled
     }
 }

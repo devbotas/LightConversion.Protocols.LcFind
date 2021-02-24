@@ -2,6 +2,7 @@
 // Licensed under the Apache 2.0, see LICENSE.md for more details.
 
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 
 namespace LightConversion.Protocols.LcFind {
@@ -16,15 +17,26 @@ namespace LightConversion.Protocols.LcFind {
             var isOk = true;
             errorMessage = "Ok";
             parsedConfiguration = new NetworkConfiguration();
+            var parts = new string[0];
 
-            // Splitting response into key=value pairs.
-            var parts = responseString.Split(';');
+            // Should be nul-terminated.
+            if (responseString.Substring(responseString.Length - 1, 1) != "\0") {
+                isOk = false;
+                errorMessage = "Should be nul-terminated.";
+            } else {
+                responseString = responseString.TrimEnd('\0');
+            }
 
-            // Checking for incorrect pairs.
-            foreach (var part in parts) {
-                if (part.Split('=').Length != 2) {
-                    isOk = false;
-                    errorMessage = "Invalid key-value pair";
+            if (isOk) {
+                // Splitting response into key=value pairs.
+                parts = responseString.Split(';');
+
+                // Checking for incorrect pairs.
+                foreach (var part in parts) {
+                    if (part.Split('=').Length != 2) {
+                        isOk = false;
+                        errorMessage = "Invalid key-value pair";
+                    }
                 }
             }
 
@@ -44,14 +56,14 @@ namespace LightConversion.Protocols.LcFind {
                         }
                     }
 
-                    if (keyValue[0] == "ip") {
+                    if (keyValue[0].ToLower() == "ip") {
                         if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.IpAddress) == false) {
                             isOk = false;
                             errorMessage = "Malformed IP address setting";
                         }
                     }
 
-                    if (keyValue[0] == "mask") {
+                    if (keyValue[0].ToLower() == "mask") {
                         if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.SubnetMask) == false) {
                             isOk = false;
                             errorMessage = "Malformed mask setting";
@@ -71,14 +83,14 @@ namespace LightConversion.Protocols.LcFind {
                         }
                     }
 
-                    if (keyValue[0] == "gateway") {
+                    if (keyValue[0].ToLower() == "gateway") {
                         if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.GatewayAddress) == false) {
                             isOk = false;
                             errorMessage = "Malformed gateway address setting";
                         }
                     }
 
-                    if (keyValue[0] == "hwaddr") {
+                    if (keyValue[0].ToLower() == "hwaddr") {
                         parsedConfiguration.MacAddress = keyValue[1];
                     }
                 }

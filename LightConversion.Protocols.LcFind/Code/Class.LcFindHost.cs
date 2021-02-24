@@ -26,12 +26,17 @@ namespace LightConversion.Protocols.LcFind {
 
         public string SerialNumber { get; set; } = $"Unknown-{Guid.NewGuid()}";
         public string DeviceName { get; set; } = $"Unknown-{Guid.NewGuid()}";
-        public Status ActualStatus { get; private set; } = Status.Ready;
+        public Status ActualStatus { get; private set; } = Status.Disabled;
+        private Status _targetStatus;
 
         private int _confirmationCounter = 0;
-        private int _cooldownCounter = 0;
+        private DateTime _cooldownEnd = new DateTime(2020, 01, 1);
         public int ConfirmationTimeout { get; set; } = 60;
         public int CooldownTimeout { get; set; } = 60;
+        public bool IsConfirmationEnabled { get; set; }
+        public bool IsReconfigurationEnabled { get; private set; }
+        private NetworkConfiguration _configurationToSet;
+        IPEndPoint _remoteEndpoint = new IPEndPoint(0, 0);
 
         public void Initialize(TrySetNetworkConfigurationDelegate trySetNetworkConfigurationDelegate, TryGetNetworkConfigurationDelegate tryGetNetworkConfigurationDelegate) {
             _trySetNetworkConfigurationDelegate = trySetNetworkConfigurationDelegate;
@@ -60,11 +65,15 @@ namespace LightConversion.Protocols.LcFind {
                     _globalCancellationTokenSource.Cancel();
                 }
             });
+
             Task.Run(async () => {
                 try {
-                    await MonitorTimeoutCountersContiuouslyAsync(_globalCancellationTokenSource.Token);
+                    while (_globalCancellationTokenSource.IsCancellationRequested == false) {
+                        Tick();
+                        await Task.Delay(1);
+                    }
                 } catch (Exception ex) {
-                    Log.Error(ex, $"{nameof(MonitorTimeoutCountersContiuouslyAsync)} task failed with exception. Host will shut down now...");
+                    Log.Error(ex, $"{nameof(Tick)} task failed with exception. Host will shut down now...");
 
                     // No point in continuing...
                     _globalCancellationTokenSource.Cancel();
@@ -80,23 +89,22 @@ namespace LightConversion.Protocols.LcFind {
             _listeningSocket.Dispose();
         }
 
-        private async Task MonitorTimeoutCountersContiuouslyAsync(CancellationToken cancellationToken) {
-            while (cancellationToken.IsCancellationRequested == false) {
-                if (_confirmationCounter > 0) {
-                    _confirmationCounter--;
-                } else {
-                    ActualStatus = Status.Ready;
-                }
-
-                if (_cooldownCounter > 0) {
-                    _cooldownCounter--;
-                } else {
-                    ActualStatus = Status.Ready;
-                }
-
-                await Task.Delay(1000, cancellationToken);
+        public void EnableReconfiguration() {
+            if (ActualStatus == Status.Disabled) {
+                _targetStatus = Status.Ready;
             }
         }
+
+        public void DisableReconfiguration() {
+            _targetStatus = Status.Disabled;
+        }
+
+        public void Confirm() {
+            if (ActualStatus == Status.AwaitingConfirmation) {
+                _targetStatus = Status.Cooldown;
+            }
+        }
+
 
         private async Task ListenForUdpTrafficContinuouslyAsync(CancellationToken cancellationToken) {
             var receiveBuffer = new byte[0x10000]; // <-- This is big enough to hold any UDP packet.
@@ -118,50 +126,55 @@ namespace LightConversion.Protocols.LcFind {
 
                     Log.Debug($"Received from {remoteEndpoint}: {receivedMessage}");
 
+#warning It is neither null nor empty at this point?
                     if (string.IsNullOrEmpty(receivedMessage) == false) {
+                        _remoteEndpoint = remoteEndpoint;
                         var response = ProcessMessage(receivedMessage);
-
-                        if (response.IsResponseNeeded) {
-                            Log.Debug($"Sending response to {remoteEndpoint}: {response.ResponseMessage}");
-
-                            var dataBytes = Encoding.UTF8.GetBytes(response.ResponseMessage);
-
-                            try {
-                                _listeningSocket.SendTo(dataBytes, dataBytes.Length, SocketFlags.None, remoteEndpoint);
-                            } catch (SocketException ex) {
-                                if (ex.SocketErrorCode == SocketError.HostUnreachable) {
-                                    Log.Debug(ex, "Can't send local response because host is unreachable, probably subnets don't match. Global response should still go through.");
-                                } else if (ex.SocketErrorCode == SocketError.NetworkUnreachable) {
-                                    Log.Debug(ex, "Can't send local response because network is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
-                                } else {
-                                    throw;
-                                }
-                            }
-
-                            if (response.IsResponseGlobal) {
-                                Log.Debug("Sending the same response globally");
-
-                                try {
-                                    _listeningSocket.SendTo(dataBytes, dataBytes.Length, SocketFlags.None, new IPEndPoint(IPAddress.Broadcast, 50022));
-                                } catch (SocketException ex) {
-                                    if (ex.SocketErrorCode == SocketError.NetworkUnreachable) {
-                                        Log.Debug(ex, "Can't send global response because network is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
-                                    } else if (ex.SocketErrorCode == SocketError.HostUnreachable) {
-                                        Log.Debug(ex, "Can't send global response because host is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
-                                    } else {
-                                        throw;
-                                    }
-                                }
-                            }
-                        } else {
-                            Log.Debug($"No reply needed for {remoteEndpoint}");
-                        }
+                        SendResponse(response, remoteEndpoint);
                     }
                 } else {
                     Log.Warn("Message of zero length received");
                 }
 
                 await Task.Delay(1, cancellationToken);
+            }
+        }
+
+        private void SendResponse(Response response, IPEndPoint remoteEndpoint) {
+            if (response.IsResponseNeeded) {
+                Log.Debug($"Sending response to {remoteEndpoint}: {response.ResponseMessage}");
+
+                var dataBytes = Encoding.UTF8.GetBytes(response.ResponseMessage);
+
+                try {
+                    _listeningSocket.SendTo(dataBytes, dataBytes.Length, SocketFlags.None, remoteEndpoint);
+                } catch (SocketException ex) {
+                    if (ex.SocketErrorCode == SocketError.HostUnreachable) {
+                        Log.Debug(ex, "Can't send local response because host is unreachable, probably subnets don't match. Global response should still go through.");
+                    } else if (ex.SocketErrorCode == SocketError.NetworkUnreachable) {
+                        Log.Debug(ex, "Can't send local response because network is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
+                    } else {
+                        throw;
+                    }
+                }
+
+                if (response.IsResponseGlobal) {
+                    Log.Debug("Sending the same response globally");
+
+                    try {
+                        _listeningSocket.SendTo(dataBytes, dataBytes.Length, SocketFlags.None, new IPEndPoint(IPAddress.Broadcast, 50022));
+                    } catch (SocketException ex) {
+                        if (ex.SocketErrorCode == SocketError.NetworkUnreachable) {
+                            Log.Debug(ex, "Can't send global response because network is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
+                        } else if (ex.SocketErrorCode == SocketError.HostUnreachable) {
+                            Log.Debug(ex, "Can't send global response because host is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
+                        } else {
+                            throw;
+                        }
+                    }
+                }
+            } else {
+                Log.Debug($"No reply needed for {remoteEndpoint}");
             }
         }
 
@@ -188,8 +201,12 @@ namespace LightConversion.Protocols.LcFind {
                     responseBuilder.Append("\0");
 
                     response = new Response(true, true, responseBuilder.ToString());
+                } else {
+                    Log.Error("Could not retrieve actual network configuration, and so cannot send a proper response to FINDReq request.");
                 }
-            } else if (receivedMessage.StartsWith($"CONFReq=1;HWADDR={_hwAddress};")) {
+            }
+
+            if (IsReconfigurationEnabled && receivedMessage.StartsWith($"CONFReq=1;HWADDR={_hwAddress};")) {
                 var isOk = NetworkConfiguration.TryFromResponseString(receivedMessage, out var receivedConfiguration, out var requestResult);
 
                 if (isOk) {
@@ -200,43 +217,117 @@ namespace LightConversion.Protocols.LcFind {
                 }
 
                 if (isOk) {
-                    if (_trySetNetworkConfigurationDelegate(receivedConfiguration)) {
-                        _cooldownCounter = CooldownTimeout;
-                        requestResult = "Ok";
-                        ActualStatus = Status.Cooldown;
+                    _configurationToSet = receivedConfiguration;
+
+                    if (IsConfirmationEnabled) {
+                        _targetStatus = Status.AwaitingConfirmation;
                     } else {
-                        requestResult = "Unable to set requested configuration";
-                        ActualStatus = Status.Ready;
+                        _targetStatus = Status.Cooldown;
                     }
+
+                    //if (_trySetNetworkConfigurationDelegate(receivedConfiguration)) {
+                    //    _cooldownCounter = CooldownTimeout;
+                    //    requestResult = "Ok";
+                    //    ActualStatus = Status.Cooldown;
+                    //} else {
+                    //    requestResult = "Unable to set requested configuration";
+                    //    ActualStatus = Status.Ready;
+                    //}
+                } else {
+#warning this global response... Do I have to send it here, on error?
+                    response = new Response(true, true, BuildConfReqResponseString(requestResult));
                 }
 
-                responseBuilder.Append("CONF=1;");
-#warning _hwaddress should become a property maybe?..
-                responseBuilder.Append($"HWADDR={_hwAddress};");
-                responseBuilder.Append($"Status={ActualStatus};");
-                responseBuilder.Append($"Result={requestResult};");
-
-                if (isOk) {
-#warning What is the point in getting configuration, when, at this point, settings reported OK?
-                    if (_tryGetNetworkConfigurationDelegate(out var actualConfig)) {
-                        if (actualConfig.IsDhcpEnabled) {
-                            responseBuilder.Append("NetworkMode=DHCP;");
-#warning Shall we not include IP addresses and stuff here?..
-                        } else {
-                            responseBuilder.Append("NetworkMode=Static;");
-                            responseBuilder.Append($"IP={actualConfig.IpAddress};");
-                            responseBuilder.Append($"Mask={actualConfig.SubnetMask};");
-                            responseBuilder.Append($"Gateway={actualConfig.GatewayAddress};");
-                        }
-                    }
-                }
-
-                responseBuilder.Append("\0");
-
-                response = new Response(true, true, responseBuilder.ToString());
+                // response = new Response(true, true, BuildConfReqResponseString(requestResult));
             }
 
             return response;
+        }
+
+        private string BuildConfReqResponseString(string requestResult) {
+            var returnString = "";
+            var responseBuilder = new StringBuilder();
+
+            responseBuilder.Append("CONF=1;");
+#warning _hwaddress should become a property maybe?..
+            responseBuilder.Append($"HWADDR={_hwAddress};");
+            responseBuilder.Append($"Status={ActualStatus};");
+            responseBuilder.Append($"Result={requestResult};");
+
+
+#warning What is the point in getting configuration, when, at this point, settings reported OK?
+            if (_tryGetNetworkConfigurationDelegate(out var actualConfig)) {
+                if (actualConfig.IsDhcpEnabled) {
+                    responseBuilder.Append("NetworkMode=DHCP;");
+#warning Shall we not include IP addresses and stuff here?..
+                } else {
+                    responseBuilder.Append("NetworkMode=Static;");
+                    responseBuilder.Append($"IP={actualConfig.IpAddress};");
+                    responseBuilder.Append($"Mask={actualConfig.SubnetMask};");
+                    responseBuilder.Append($"Gateway={actualConfig.GatewayAddress};");
+                }
+            }
+
+            responseBuilder.Append("\0");
+
+            returnString = responseBuilder.ToString();
+
+
+            return returnString;
+        }
+
+        private void Tick() {
+            if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Ready)) {
+                // bybis.
+            } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Disabled)) {
+                ActualStatus = Status.Disabled;
+            } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Cooldown)) {
+                var requestResult = "";
+
+                if (_trySetNetworkConfigurationDelegate(_configurationToSet)) {
+                    _cooldownEnd = DateTime.Now.AddSeconds(CooldownTimeout);
+                    requestResult = "Ok";
+                    ActualStatus = Status.Cooldown;
+                } else {
+                    requestResult = "Unable to set requested configuration";
+                    ActualStatus = Status.Ready;
+                }
+
+                var responseString = BuildConfReqResponseString(requestResult);
+                var response = new Response(true, true, BuildConfReqResponseString(requestResult));
+                SendResponse(response, _remoteEndpoint);
+                ActualStatus = Status.Cooldown;
+            } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.AwaitingConfirmation)) {
+                // todo.
+            } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Disabled)) {
+                IsReconfigurationEnabled = false;
+                ActualStatus = Status.Disabled;
+            } else if ((ActualStatus == Status.AwaitingConfirmation) && (_targetStatus == Status.AwaitingConfirmation)) {
+                // todo.
+            } else if ((ActualStatus == Status.AwaitingConfirmation) && (_targetStatus == Status.Cooldown)) {
+                // todo.
+            } else if ((ActualStatus == Status.AwaitingConfirmation) && (_targetStatus == Status.Ready)) {
+                // todo.
+            } else if ((ActualStatus == Status.Cooldown) && (_targetStatus == Status.Disabled)) {
+                IsReconfigurationEnabled = false;
+                ActualStatus = Status.Disabled;
+            } else if ((ActualStatus == Status.Cooldown) && (_targetStatus == Status.Cooldown)) {
+                if (DateTime.Now >= _cooldownEnd) {
+                    _targetStatus = Status.Ready;
+                }
+            } else if ((ActualStatus == Status.Cooldown) && (_targetStatus == Status.Ready)) {
+                ActualStatus = Status.Ready;
+            } else if ((ActualStatus == Status.Cooldown) && (_targetStatus == Status.Disabled)) {
+                IsReconfigurationEnabled = false;
+                ActualStatus = Status.Disabled;
+            } else if ((ActualStatus == Status.Disabled) && (_targetStatus == Status.Ready)) {
+                ActualStatus = Status.Ready;
+                IsReconfigurationEnabled = true;
+            }
+        }
+
+        private bool SetNewConfiguration() {
+            return true;
         }
 
         private bool IsNewIpValid(IPAddress newIpAddress) {
@@ -256,6 +347,7 @@ namespace LightConversion.Protocols.LcFind {
         }
 
         private class Response {
+#warning do we still need those bools?
             public readonly bool IsResponseGlobal;
             public readonly bool IsResponseNeeded;
             public readonly string ResponseMessage;
