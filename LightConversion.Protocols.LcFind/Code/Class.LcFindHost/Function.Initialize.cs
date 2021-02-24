@@ -25,16 +25,6 @@ namespace LightConversion.Protocols.LcFind {
                 throw;
             }
 
-            Task.Run(async () => {
-                try {
-                    await ListenForUdpTrafficContinuouslyAsync(_globalCancellationTokenSource.Token);
-                } catch (Exception ex) {
-                    Log.Error(ex, $"{nameof(ListenForUdpTrafficContinuouslyAsync)} failed with exception. Host will shut down now...");
-
-                    // No point in continuing...
-                    _globalCancellationTokenSource.Cancel();
-                }
-            });
 
             Task.Run(async () => {
                 try {

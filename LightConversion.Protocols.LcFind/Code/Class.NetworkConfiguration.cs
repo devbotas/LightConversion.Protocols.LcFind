@@ -21,7 +21,7 @@ namespace LightConversion.Protocols.LcFind {
             // Should be nul-terminated.
             if (requestString.Substring(requestString.Length - 1, 1) != "\0") {
                 isOk = false;
-                errorMessage = "Should be nul-terminated.";
+                errorMessage = "Error-Should be nul-terminated.";
             } else {
                 requestString = requestString.TrimEnd('\0');
             }
@@ -34,7 +34,7 @@ namespace LightConversion.Protocols.LcFind {
                 foreach (var part in parts) {
                     if (part.Split('=').Length != 2) {
                         isOk = false;
-                        errorMessage = "Invalid key-value pair";
+                        errorMessage = "Error-Invalid key-value pair";
                     }
                 }
             }
@@ -51,18 +51,18 @@ namespace LightConversion.Protocols.LcFind {
                             parsedConfiguration.IsDhcpEnabled = false;
                         } else {
                             isOk = false;
-                            errorMessage = "Unrecognized network mode setting";
+                            errorMessage = "Error-Unrecognized network mode setting";
                         }
                     }
 
                     if (keyValue[0].ToLower() == "ip") {
                         if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.IpAddress) == false) {
                             isOk = false;
-                            errorMessage = "Malformed IP address setting";
+                            errorMessage = "Error-Malformed IP address setting";
                         } else {
                             if (CheckIfIpIsNotReserved(parsedConfiguration.IpAddress) == false) {
                                 isOk = false;
-                                errorMessage = "This IP address is reserved and cannot be used";
+                                errorMessage = "Error-This IP address is reserved and cannot be used";
                             }
                         }
                     }
@@ -70,7 +70,7 @@ namespace LightConversion.Protocols.LcFind {
                     if (keyValue[0].ToLower() == "mask") {
                         if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.SubnetMask) == false) {
                             isOk = false;
-                            errorMessage = "Malformed mask setting";
+                            errorMessage = "Error-Malformed mask setting";
                         } else {
                             var newMaskBytes = parsedConfiguration.SubnetMask.GetAddressBytes();
                             Array.Reverse(newMaskBytes);
@@ -82,7 +82,7 @@ namespace LightConversion.Protocols.LcFind {
 
                             if (newMask != 0) {
                                 isOk = false;
-                                errorMessage = "Malformed mask setting";
+                                errorMessage = "Error-Malformed mask setting";
                             }
                         }
                     }
@@ -90,7 +90,7 @@ namespace LightConversion.Protocols.LcFind {
                     if (keyValue[0].ToLower() == "gateway") {
                         if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.GatewayAddress) == false) {
                             isOk = false;
-                            errorMessage = "Malformed gateway address setting";
+                            errorMessage = "Error-Malformed gateway address setting";
                         }
                     }
 

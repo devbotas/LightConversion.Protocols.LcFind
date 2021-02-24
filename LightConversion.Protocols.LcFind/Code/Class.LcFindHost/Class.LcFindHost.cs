@@ -34,7 +34,5 @@ namespace LightConversion.Protocols.LcFind {
         public int CooldownTimeout { get; set; } = 60;
         public bool IsConfirmationEnabled { get; set; }
         public bool IsReconfigurationEnabled { get; private set; }
-        private NetworkConfiguration _configurationToSet;
-        IPEndPoint _remoteEndpoint = new IPEndPoint(0, 0);
     }
 }
