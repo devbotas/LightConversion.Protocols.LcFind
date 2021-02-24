@@ -30,9 +30,7 @@ namespace LightConversion.Protocols.LcFind {
             }
 
             responseBuilder.Append("\0");
-
             returnString = responseBuilder.ToString();
-
 
             return returnString;
         }

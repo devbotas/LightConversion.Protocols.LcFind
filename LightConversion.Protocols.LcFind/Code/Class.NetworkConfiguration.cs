@@ -2,7 +2,6 @@
 // Licensed under the Apache 2.0, see LICENSE.md for more details.
 
 using System;
-using System.ComponentModel.DataAnnotations;
 using System.Net;
 
 namespace LightConversion.Protocols.LcFind {
@@ -13,23 +12,23 @@ namespace LightConversion.Protocols.LcFind {
         public IPAddress GatewayAddress = IPAddress.None;
         public string MacAddress = "";
 
-        public static bool TryFromResponseString(string responseString, out NetworkConfiguration parsedConfiguration, out string errorMessage) {
+        public static bool TryFromRequestString(string requestString, out NetworkConfiguration parsedConfiguration, out string errorMessage) {
             var isOk = true;
             errorMessage = "Ok";
             parsedConfiguration = new NetworkConfiguration();
             var parts = new string[0];
 
             // Should be nul-terminated.
-            if (responseString.Substring(responseString.Length - 1, 1) != "\0") {
+            if (requestString.Substring(requestString.Length - 1, 1) != "\0") {
                 isOk = false;
                 errorMessage = "Should be nul-terminated.";
             } else {
-                responseString = responseString.TrimEnd('\0');
+                requestString = requestString.TrimEnd('\0');
             }
 
             if (isOk) {
                 // Splitting response into key=value pairs.
-                parts = responseString.Split(';');
+                parts = requestString.Split(';');
 
                 // Checking for incorrect pairs.
                 foreach (var part in parts) {
@@ -60,6 +59,11 @@ namespace LightConversion.Protocols.LcFind {
                         if (IPAddress.TryParse(keyValue[1], out parsedConfiguration.IpAddress) == false) {
                             isOk = false;
                             errorMessage = "Malformed IP address setting";
+                        } else {
+                            if (CheckIfIpIsNotReserved(parsedConfiguration.IpAddress) == false) {
+                                isOk = false;
+                                errorMessage = "This IP address is reserved and cannot be used";
+                            }
                         }
                     }
 
@@ -97,6 +101,22 @@ namespace LightConversion.Protocols.LcFind {
             }
 
             return isOk;
+        }
+
+        public static bool CheckIfIpIsNotReserved(IPAddress newIpAddress) {
+            var newIpBytes = newIpAddress.GetAddressBytes();
+            var noEmptyAddress = newIpBytes[0] != 0 || newIpBytes[1] != 0 || newIpBytes[2] != 0 || newIpBytes[3] != 0;
+            var noLoopback = newIpBytes[0] != 127;
+            var noLinkLocal = newIpBytes[0] != 169 || newIpBytes[1] != 254;
+            var noTestNet1 = newIpBytes[0] != 192 || newIpBytes[1] != 0;
+            var noIpv6Relay = newIpBytes[0] != 192 || newIpBytes[1] != 88 || newIpBytes[2] != 99;
+            var noTestNet2 = newIpBytes[0] != 198;
+            var noTestNet3 = newIpBytes[0] != 203;
+            var noMulticast = newIpBytes[0] != 224;
+            var noReserved = newIpBytes[0] != 240;
+            var noBroadcast = newIpBytes[0] != 255 || newIpBytes[1] != 255 || newIpBytes[2] != 255 || newIpBytes[3] != 255;
+
+            return noEmptyAddress && noLoopback && noLinkLocal && noTestNet1 && noIpv6Relay && noTestNet2 && noTestNet3 && noMulticast && noReserved && noBroadcast;
         }
     }
 }

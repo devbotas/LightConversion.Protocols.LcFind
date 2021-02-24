@@ -37,14 +37,7 @@ namespace LightConversion.Protocols.LcFind {
             }
 
             if (IsReconfigurationEnabled && receivedMessage.StartsWith($"CONFReq=1;HWADDR={_hwAddress};")) {
-                var isOk = NetworkConfiguration.TryFromResponseString(receivedMessage, out var receivedConfiguration, out var requestResult);
-
-                if (isOk) {
-                    if (CheckIfNewIpIsValid(receivedConfiguration.IpAddress) == false) {
-                        isOk = false;
-                        requestResult = "Cannot use this IP address";
-                    }
-                }
+                var isOk = NetworkConfiguration.TryFromRequestString(receivedMessage, out var receivedConfiguration, out var requestResult);
 
                 if (isOk) {
                     _configurationToSet = receivedConfiguration;
@@ -64,7 +57,6 @@ namespace LightConversion.Protocols.LcFind {
                     //    ActualStatus = Status.Ready;
                     //}
                 } else {
-#warning this global response... Do I have to send it here, on error?
                     responseMessage = BuildConfReqResponseString(requestResult);
                     returnValue = true;
                 }

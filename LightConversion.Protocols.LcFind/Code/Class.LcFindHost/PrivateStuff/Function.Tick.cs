@@ -22,7 +22,6 @@ namespace LightConversion.Protocols.LcFind {
                     ActualStatus = Status.Ready;
                 }
 
-                var responseString = BuildConfReqResponseString(requestResult);
                 var response = BuildConfReqResponseString(requestResult);
                 SendResponse(response, _remoteEndpoint);
                 ActualStatus = Status.Cooldown;
