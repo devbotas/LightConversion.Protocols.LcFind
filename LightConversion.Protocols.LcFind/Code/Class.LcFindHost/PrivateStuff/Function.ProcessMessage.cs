@@ -5,8 +5,10 @@ using System.Text;
 
 namespace LightConversion.Protocols.LcFind {
     public partial class LcFindHost {
-        private bool ProcessMessage(string receivedMessage, out Response response) {
-            response = new Response(false, false, "");
+        private bool ProcessMessage(string receivedMessage, out string responseMessage) {
+            var returnValue = false;
+            responseMessage = "";
+
             var responseBuilder = new StringBuilder();
             if (receivedMessage.StartsWith("FINDReq=1;")) {
                 if (_tryGetNetworkConfigurationDelegate(out var actualConfig)) {
@@ -27,7 +29,8 @@ namespace LightConversion.Protocols.LcFind {
                     responseBuilder.Append($"Gateway={actualConfig.GatewayAddress};");
                     responseBuilder.Append("\0");
 
-                    response = new Response(true, true, responseBuilder.ToString());
+                    responseMessage = responseBuilder.ToString();
+                    returnValue = true;
                 } else {
                     Log.Error("Could not retrieve actual network configuration, and so cannot send a proper response to FINDReq request.");
                 }
@@ -62,13 +65,14 @@ namespace LightConversion.Protocols.LcFind {
                     //}
                 } else {
 #warning this global response... Do I have to send it here, on error?
-                    response = new Response(true, true, BuildConfReqResponseString(requestResult));
+                    responseMessage = BuildConfReqResponseString(requestResult);
+                    returnValue = true;
                 }
 
                 // response = new Response(true, true, BuildConfReqResponseString(requestResult));
             }
 
-            return response;
+            return returnValue;
         }
     }
 }

@@ -36,16 +36,5 @@ namespace LightConversion.Protocols.LcFind {
         public bool IsReconfigurationEnabled { get; private set; }
         private NetworkConfiguration _configurationToSet;
         IPEndPoint _remoteEndpoint = new IPEndPoint(0, 0);
-
-        private class Response {
-#warning do we still need those bools?
-            public readonly bool IsResponseGlobal;
-            public readonly string ResponseMessage;
-
-            public Response(bool isResponseGlobal, string responseMessage) {
-                IsResponseGlobal = isResponseGlobal;
-                ResponseMessage = responseMessage;
-            }
-        }
     }
 }

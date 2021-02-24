@@ -23,7 +23,7 @@ namespace LightConversion.Protocols.LcFind {
                 }
 
                 var responseString = BuildConfReqResponseString(requestResult);
-                var response = new Response(true, true, BuildConfReqResponseString(requestResult));
+                var response = BuildConfReqResponseString(requestResult);
                 SendResponse(response, _remoteEndpoint);
                 ActualStatus = Status.Cooldown;
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.AwaitingConfirmation)) {
