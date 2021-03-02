@@ -19,12 +19,34 @@ namespace LightConversion.Protocols.LcFind {
             try {
                 _listeningSocket.Bind(new IPEndPoint(IPAddress.Any, 50022));
             } catch (SocketException ex) {
-                Log.Error(ex, "Can't bind to port 50022. Make sure no other program is using it, also wihtout SocketOptionName.ReuseAddress.");
+                Log.Error(ex, "Can't bind to port 50022. Make sure no other program is using it, also without SocketOptionName.ReuseAddress.");
 
                 // No point of continuing, so throwing hardly...
                 throw;
             }
 
+            Task.Run(async () => {
+                try {
+                    while (_globalCancellationTokenSource.IsCancellationRequested == false) {
+                        var gotSomething = TryReadUdpTraffic(out var payload, out var endpoint);
+
+                        if (gotSomething) {
+                            _udpReceiveQueue.Enqueue(new ClientRawMessage { Payload = payload, Endpoint = endpoint });
+                            if (_udpReceiveQueue.Count > 10) {
+                                _udpReceiveQueue.TryDequeue(out _);
+                                Log.Warn("UDP input queue is full, discarding an element.");
+                            }
+                        }
+
+                        await Task.Delay(1);
+                    }
+                } catch (Exception ex) {
+                    Log.Error(ex, $"UDP receiving task failed with exception. Host will shut down now...");
+
+                    // No point in continuing...
+                    _globalCancellationTokenSource.Cancel();
+                }
+            });
 
             Task.Run(async () => {
                 try {

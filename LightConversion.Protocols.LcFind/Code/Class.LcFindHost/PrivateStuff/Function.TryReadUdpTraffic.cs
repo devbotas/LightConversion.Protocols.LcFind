@@ -15,6 +15,7 @@ namespace LightConversion.Protocols.LcFind {
             payload = "";
 
             var receivedLength = _listeningSocket.ReceiveFrom(receiveBuffer, ref tempRemoteEndpoint);
+
             remoteEndpoint = (IPEndPoint)tempRemoteEndpoint;
 
             var isOk = true;

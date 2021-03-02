@@ -2,46 +2,53 @@
 // Licensed under the Apache 2.0, see LICENSE.md for more details.
 
 using System;
+using System.Net;
 
 namespace LightConversion.Protocols.LcFind {
     public partial class LcFindHost {
         private void Tick() {
             var responseMessage = "";
+            var isConfReqActionNeeded = false;
             NetworkConfiguration receivedConfiguration = null;
-            var gotSomething = TryReadUdpTraffic(out var receivedMessage, out var remoteEndpoint);
+
+            var gotSomething = _udpReceiveQueue.TryDequeue(out var receivedMessage);
 
             if (gotSomething) {
-                if (receivedMessage.StartsWith("FINDReq=1;")) {
+                if (receivedMessage.Payload.StartsWith("FINDReq=1;")) {
                     if (_tryGetNetworkConfigurationDelegate(out var actualConfig)) {
                         responseMessage = BuildFindReqResponseString(actualConfig);
+                        _requestedNewConfigurationEndpoint = receivedMessage.Endpoint;
                     } else {
                         Log.Error("Could not retrieve actual network configuration, and so cannot send a proper response to FINDReq request.");
                     }
                 }
 
-                if (IsReconfigurationEnabled && (ActualStatus == Status.Ready) && receivedMessage.StartsWith($"CONFReq=1;HWADDR={_hwAddress};")) {
-                    var isOk = NetworkConfiguration.TryFromRequestString(receivedMessage, out receivedConfiguration, out var requestResult);
+                if (receivedMessage.Payload.StartsWith($"CONFReq=1;HWADDR={_hwAddress};")) {
+                    var isOk = NetworkConfiguration.TryFromRequestString(receivedMessage.Payload, out receivedConfiguration, out var requestResult);
+                    _requestedNewConfigurationEndpoint = receivedMessage.Endpoint;
 
                     if (isOk) {
-                        if (IsConfirmationEnabled) {
-                            _targetStatus = Status.AwaitingConfirmation;
-                        } else {
-                            _targetStatus = Status.Cooldown;
-                        }
+                        _requestedNewConfiguration = receivedConfiguration;
+                        isConfReqActionNeeded = true;
                     } else {
                         responseMessage = BuildConfReqResponseString(requestResult);
                     }
                 }
             }
 
-
             if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Ready)) {
-                // Doing nothing. Waiting for commands.
+                if (IsReconfigurationEnabled && isConfReqActionNeeded) {
+                    if (IsConfirmationEnabled) {
+                        _targetStatus = Status.AwaitingConfirmation;
+                    } else {
+                        _targetStatus = Status.Cooldown;
+                    }
+                }
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Cooldown)) {
                 var requestResult = "";
 
-                Log.Info($"Trying to set new network configuration ({receivedConfiguration.IpAddress} / {receivedConfiguration.SubnetMask}) ...");
-                if (_trySetNetworkConfigurationDelegate(receivedConfiguration)) {
+                Log.Info($"Trying to set new network configuration ({_requestedNewConfiguration.IpAddress} / {_requestedNewConfiguration.SubnetMask}) ...");
+                if (_trySetNetworkConfigurationDelegate(_requestedNewConfiguration)) {
                     Log.Info($"New configuration set. Host will now spend {CooldownTimeout} seconds in {nameof(Status.Cooldown)} state.");
                     _cooldownEnd = DateTime.Now.AddSeconds(CooldownTimeout);
                     requestResult = "Ok";
@@ -87,7 +94,7 @@ namespace LightConversion.Protocols.LcFind {
             }
 
             if (responseMessage != "") {
-                SendResponse(responseMessage, remoteEndpoint);
+                SendResponse(responseMessage, _requestedNewConfigurationEndpoint);
             }
         }
     }

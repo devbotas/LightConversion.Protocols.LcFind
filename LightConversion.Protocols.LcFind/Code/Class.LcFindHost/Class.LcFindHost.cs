@@ -2,6 +2,7 @@
 // Licensed under the Apache 2.0, see LICENSE.md for more details.
 
 using System;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -22,6 +23,7 @@ namespace LightConversion.Protocols.LcFind {
 
         private string _hwAddress;
         private Socket _listeningSocket;
+        private ConcurrentQueue<ClientRawMessage> _udpReceiveQueue = new ConcurrentQueue<ClientRawMessage>();
 
         public string SerialNumber { get; set; } = $"Unknown-{Guid.NewGuid()}";
         public string DeviceName { get; set; } = $"Unknown-{Guid.NewGuid()}";
@@ -29,6 +31,8 @@ namespace LightConversion.Protocols.LcFind {
         private Status _targetStatus;
 
         private int _confirmationCounter = 0;
+        private NetworkConfiguration _requestedNewConfiguration = new NetworkConfiguration();
+        private IPEndPoint _requestedNewConfigurationEndpoint = new IPEndPoint(0, 0);
         private DateTime _cooldownEnd = new DateTime(2020, 01, 1);
         public int ConfirmationTimeout { get; set; } = 60;
         public int CooldownTimeout { get; set; } = 60;
