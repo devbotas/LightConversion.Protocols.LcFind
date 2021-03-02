@@ -36,29 +36,29 @@ namespace LightConversion.Protocols.LcFind {
 
 
             if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Ready)) {
-                // bybis.
-            } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Disabled)) {
-                ActualStatus = Status.Disabled;
+                // Doing nothing. Waiting for commands.
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Cooldown)) {
                 var requestResult = "";
 
+                Log.Info($"Trying to set new network configuration ({receivedConfiguration.IpAddress} / {receivedConfiguration.SubnetMask}) ...");
                 if (_trySetNetworkConfigurationDelegate(receivedConfiguration)) {
+                    Log.Info($"New configuration set. Host will now spend {CooldownTimeout} seconds in {nameof(Status.Cooldown)} state.");
                     _cooldownEnd = DateTime.Now.AddSeconds(CooldownTimeout);
                     requestResult = "Ok";
                     ActualStatus = Status.Cooldown;
                 } else {
+                    Log.Error($"Unable to set requested configuration.");
                     requestResult = "Error-Unable to set requested configuration";
                     ActualStatus = Status.Ready;
                 }
 
                 responseMessage = BuildConfReqResponseString(requestResult);
-
-                ActualStatus = Status.Cooldown;
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.AwaitingConfirmation)) {
                 // todo.
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Disabled)) {
                 IsReconfigurationEnabled = false;
                 ActualStatus = Status.Disabled;
+                Log.Info($"Going to state {nameof(Status.Disabled)} upon host's request. LC-FIND is now disabled.");
             } else if ((ActualStatus == Status.AwaitingConfirmation) && (_targetStatus == Status.AwaitingConfirmation)) {
                 // todo.
             } else if ((ActualStatus == Status.AwaitingConfirmation) && (_targetStatus == Status.Cooldown)) {
@@ -68,18 +68,22 @@ namespace LightConversion.Protocols.LcFind {
             } else if ((ActualStatus == Status.Cooldown) && (_targetStatus == Status.Disabled)) {
                 IsReconfigurationEnabled = false;
                 ActualStatus = Status.Disabled;
+                Log.Info($"Going to state {nameof(Status.Disabled)} upon host's request. LC-FIND is now disabled.");
             } else if ((ActualStatus == Status.Cooldown) && (_targetStatus == Status.Cooldown)) {
                 if (DateTime.Now >= _cooldownEnd) {
                     _targetStatus = Status.Ready;
                 }
             } else if ((ActualStatus == Status.Cooldown) && (_targetStatus == Status.Ready)) {
+                Log.Info($"Cooldown period expired, going to state {nameof(Status.Ready)}.");
                 ActualStatus = Status.Ready;
             } else if ((ActualStatus == Status.Cooldown) && (_targetStatus == Status.Disabled)) {
                 IsReconfigurationEnabled = false;
                 ActualStatus = Status.Disabled;
+                Log.Info($"Going to state {nameof(Status.Disabled)} upon host's request. LC-FIND is now disabled.");
             } else if ((ActualStatus == Status.Disabled) && (_targetStatus == Status.Ready)) {
                 ActualStatus = Status.Ready;
                 IsReconfigurationEnabled = true;
+                Log.Info($"Going to state {nameof(Status.Ready)} upon host's request. LC-FIND is now enabled.");
             }
 
             if (responseMessage != "") {
