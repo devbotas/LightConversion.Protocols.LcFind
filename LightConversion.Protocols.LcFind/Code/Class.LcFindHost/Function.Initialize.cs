@@ -51,6 +51,24 @@ namespace LightConversion.Protocols.LcFind {
             Task.Run(async () => {
                 try {
                     while (_globalCancellationTokenSource.IsCancellationRequested == false) {
+                        if (_udpSendQueue.TryDequeue(out var response)) {
+                            SendResponse(response.Payload, response.Endpoint);
+                        }
+
+                        await Task.Delay(100);
+                    }
+                } catch (Exception ex) {
+                    Log.Error(ex, $"UDP sending task failed with exception. Host will shut down now...");
+
+                    // No point in continuing...
+                    _globalCancellationTokenSource.Cancel();
+                }
+            });
+
+
+            Task.Run(async () => {
+                try {
+                    while (_globalCancellationTokenSource.IsCancellationRequested == false) {
                         Tick();
                         await Task.Delay(1);
                     }

@@ -24,6 +24,7 @@ namespace LightConversion.Protocols.LcFind {
         private string _hwAddress;
         private Socket _listeningSocket;
         private ConcurrentQueue<ClientRawMessage> _udpReceiveQueue = new ConcurrentQueue<ClientRawMessage>();
+        private ConcurrentQueue<ClientRawMessage> _udpSendQueue = new ConcurrentQueue<ClientRawMessage>();
 
         public string SerialNumber { get; set; } = $"Unknown-{Guid.NewGuid()}";
         public string DeviceName { get; set; } = $"Unknown-{Guid.NewGuid()}";

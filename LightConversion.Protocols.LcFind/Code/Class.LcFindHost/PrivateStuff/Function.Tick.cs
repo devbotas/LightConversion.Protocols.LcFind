@@ -17,7 +17,7 @@ namespace LightConversion.Protocols.LcFind {
                 if (receivedMessage.Payload.StartsWith("FINDReq=1;")) {
                     if (_tryGetNetworkConfigurationDelegate(out var actualConfig)) {
                         responseMessage = BuildFindReqResponseString(actualConfig);
-                        _requestedNewConfigurationEndpoint = receivedMessage.Endpoint;
+                        _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = receivedMessage.Endpoint });
                     } else {
                         Log.Error("Could not retrieve actual network configuration, and so cannot send a proper response to FINDReq request.");
                     }
@@ -32,6 +32,7 @@ namespace LightConversion.Protocols.LcFind {
                         isConfReqActionNeeded = true;
                     } else {
                         responseMessage = BuildConfReqResponseString(requestResult);
+                        _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = receivedMessage.Endpoint });
                     }
                 }
             }
@@ -60,6 +61,7 @@ namespace LightConversion.Protocols.LcFind {
                 }
 
                 responseMessage = BuildConfReqResponseString(requestResult);
+                _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = _requestedNewConfigurationEndpoint });
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.AwaitingConfirmation)) {
                 // todo.
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Disabled)) {
@@ -91,10 +93,6 @@ namespace LightConversion.Protocols.LcFind {
                 ActualStatus = Status.Ready;
                 IsReconfigurationEnabled = true;
                 Log.Info($"Going to state {nameof(Status.Ready)} upon host's request. LC-FIND is now enabled.");
-            }
-
-            if (responseMessage != "") {
-                SendResponse(responseMessage, _requestedNewConfigurationEndpoint);
             }
         }
     }
