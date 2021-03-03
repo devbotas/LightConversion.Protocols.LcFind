@@ -2,14 +2,11 @@
 // Licensed under the Apache 2.0, see LICENSE.md for more details.
 
 using System;
-using System.Net;
 
 namespace LightConversion.Protocols.LcFind {
     public partial class LcFindHost {
         private void Tick() {
             var responseMessage = "";
-            var isConfReqActionNeeded = false;
-            NetworkConfiguration receivedConfiguration = null;
 
             var gotSomething = _udpReceiveQueue.TryDequeue(out var receivedMessage);
 
@@ -24,12 +21,10 @@ namespace LightConversion.Protocols.LcFind {
                 }
 
                 if (receivedMessage.Payload.StartsWith($"CONFReq=1;HWADDR={_hwAddress};")) {
-                    var isOk = NetworkConfiguration.TryFromRequestString(receivedMessage.Payload, out receivedConfiguration, out var requestResult);
-                    _requestedNewConfigurationEndpoint = receivedMessage.Endpoint;
+                    var isOk = NetworkConfiguration.TryFromRequestString(receivedMessage.Payload, out _, out var requestResult);
 
                     if (isOk) {
-                        _requestedNewConfiguration = receivedConfiguration;
-                        isConfReqActionNeeded = true;
+                        _unansweredConfRequest = receivedMessage;
                     } else {
                         responseMessage = BuildConfReqResponseString(requestResult);
                         _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = receivedMessage.Endpoint });
@@ -38,7 +33,7 @@ namespace LightConversion.Protocols.LcFind {
             }
 
             if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Ready)) {
-                if (IsReconfigurationEnabled && isConfReqActionNeeded) {
+                if (IsReconfigurationEnabled && (_unansweredConfRequest != null)) {
                     if (IsConfirmationEnabled) {
                         _targetStatus = Status.AwaitingConfirmation;
                     } else {
@@ -46,10 +41,10 @@ namespace LightConversion.Protocols.LcFind {
                     }
                 }
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Cooldown)) {
-                var requestResult = "";
+                NetworkConfiguration.TryFromRequestString(_unansweredConfRequest.Payload, out var requestedNewConfiguration, out var requestResult);
 
-                Log.Info($"Trying to set new network configuration ({_requestedNewConfiguration.IpAddress} / {_requestedNewConfiguration.SubnetMask}) ...");
-                if (_trySetNetworkConfigurationDelegate(_requestedNewConfiguration)) {
+                Log.Info($"Trying to set new network configuration ({requestedNewConfiguration.IpAddress} / {requestedNewConfiguration.SubnetMask}) ...");
+                if (_trySetNetworkConfigurationDelegate(requestedNewConfiguration)) {
                     Log.Info($"New configuration set. Host will now spend {CooldownTimeout} seconds in {nameof(Status.Cooldown)} state.");
                     _cooldownEnd = DateTime.Now.AddSeconds(CooldownTimeout);
                     requestResult = "Ok";
@@ -61,7 +56,8 @@ namespace LightConversion.Protocols.LcFind {
                 }
 
                 responseMessage = BuildConfReqResponseString(requestResult);
-                _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = _requestedNewConfigurationEndpoint });
+                _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = _unansweredConfRequest.Endpoint });
+                _unansweredConfRequest = null;
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.AwaitingConfirmation)) {
                 // todo.
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Disabled)) {
