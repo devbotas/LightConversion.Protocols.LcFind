@@ -6,4 +6,39 @@ Typically, network devices operate using statically or dynamically assigned IP a
 
 How easy could it be, if every device would simply send a response, if the user asks for the name and the IP address of each device in his network? LC-FIND protocol does exactly that.
 
-> This is extended but compatible version of SEGGER's FIND protocol. Meaning that software tools provided by SEGGER or 3rd party tools written for SEGGER's FIND protocol is still able to communicate with devices implementing LC-FIND protocol. 
+> This is extended but compatible version of [SEGGER's FIND protocol](https://www.segger.com/products/connectivity/emnet/technology/find-protocol/). Meaning that software tools provided by SEGGER or 3rd party tools written for SEGGER's FIND protocol is still able to communicate with devices implementing LC-FIND protocol. 
+
+# SEGGER's FIND specification
+
+The protocol is simple and efficient. A host sends a query via UDP broadcast to port 50022 and all clients which are listening on that port send a UDP unicast response with the used address configuration to port 50022.
+
+- The maximum size of the payload of packets (query/response) is 512 bytes.
+- The payload of requests and responses is a zero-terminated UTF-8 string.
+- Payload consist of key-value pairs ```{key}={value};{key}={value};```. Here "=" and ";" are used as delimiters, so those symbols cannot be used in the actual payload.
+
+Minimal mandatory request is:
+
+```
+FINDReq=1;
+```
+
+And minimal mandatory response:
+
+```
+FIND=1;SN={serialNumber};HWADDR={MAC};DeviceName={DeviceName};
+```
+
+Where mandatory structure of "FINDreq" is:
+
+Key|Valid values|Description
+---|------------|-----------
+FINDReq|1|Find request version 1.
+
+And mandatory structure of "FIND" is:
+
+Key|Valid values|Description
+---|------------|-----------
+FIND|1|Indicates that this is a response to FINDReq=1; message.
+SN|Any string without characters "=" or ";"|Serial number of the device. Must be unique.
+HWADDR|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device.
+DeviceName|Any string without characters "=" or ";"|Name of the device which should help user to know what kind of device this is. There can be multiple devices with the same name.
