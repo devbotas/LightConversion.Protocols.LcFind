@@ -6,4 +6,4 @@ Typically, network devices operate using statically or dynamically assigned IP a
 
 How easy could it be, if every device would simply send a response, if the user asks for the name and the IP address of each device in his network? LC-FIND protocol does exactly that.
 
-This is extended but compatible version of SEGGER's FIND protocol. Meaning that software tools provided by SEGGER or 3rd party tools written for SEGGER's FIND protocol is still able to communicate with devices implementing LC-FIND protocol. 
+> This is extended but compatible version of SEGGER's FIND protocol. Meaning that software tools provided by SEGGER or 3rd party tools written for SEGGER's FIND protocol is still able to communicate with devices implementing LC-FIND protocol. 
