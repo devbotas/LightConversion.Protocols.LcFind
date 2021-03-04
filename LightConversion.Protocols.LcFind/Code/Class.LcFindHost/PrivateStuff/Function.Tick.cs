@@ -26,6 +26,7 @@ namespace LightConversion.Protocols.LcFind {
                     if (isOk) {
                         _unansweredConfRequest = receivedMessage;
                     } else {
+                        Log.Debug($"Client sent a malformed CONFReq message. Result: {requestResult}.");
                         responseMessage = BuildConfReqResponseString(requestResult);
                         _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = receivedMessage.Endpoint });
                     }
@@ -35,15 +36,17 @@ namespace LightConversion.Protocols.LcFind {
             if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Ready)) {
                 if (IsReconfigurationEnabled && (_unansweredConfRequest != null)) {
                     if (IsConfirmationEnabled) {
+                        Log.Info($"Client at {_unansweredConfRequest.Endpoint.Address} requested a configuration change, but host requires confirmation, so waiting for it.");
                         _targetStatus = Status.AwaitingConfirmation;
                     } else {
+                        Log.Info($"Client at {_unansweredConfRequest.Endpoint.Address} requested to change configuration. Host confirmation is disabled, so proceeding.");
                         _targetStatus = Status.Cooldown;
                     }
                 }
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Cooldown)) {
                 NetworkConfiguration.TryFromRequestString(_unansweredConfRequest.Payload, out var requestedNewConfiguration, out var requestResult);
 
-                Log.Info($"Trying to set new network configuration ({requestedNewConfiguration.IpAddress} / {requestedNewConfiguration.SubnetMask}) ...");
+                Log.Info($"Trying to set new network configuration ({requestedNewConfiguration.IpAddress} / {requestedNewConfiguration.SubnetMask} / {requestedNewConfiguration.GatewayAddress} / {requestedNewConfiguration.IsDhcpEnabled}) ...");
                 if (_trySetNetworkConfigurationDelegate(requestedNewConfiguration)) {
                     Log.Info($"New configuration set. Host will now spend {CooldownTimeout} seconds in {nameof(Status.Cooldown)} state.");
                     _cooldownEnd = DateTime.Now.AddSeconds(CooldownTimeout);
