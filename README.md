@@ -42,3 +42,24 @@ FIND|1|Indicates that this is a response to FINDReq=1; message.
 SN|Any string without characters "=" or ";"|Serial number of the device. Must be unique.
 HWADDR|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device.
 DeviceName|Any string without characters "=" or ";"|Name of the device which should help user to know what kind of device this is. There can be multiple devices with the same name.
+
+# LC-FIND extension
+
+SEGGER's FIND protocol has an issue that it doesn't work when client and device are in different subnets. This is because SEGGER specifies that responses from the device must come as a UDP unicast. Also, there is no way of changing device configuration. So, LC-FIND adds theses changes to original protocol:
+
+- Instead of unicast responses, LC-FIND uses broadcast responses.
+- Additional data fields in FIND response: ```Status```, ```Result```, ```NetworkMode```, ```Mask```, ```Gateway```.
+- New ```CONFReq``` request and ```CONF``` response messages. 
+
+## Using broadcast responses instead of unicast ones
+
+All messages, including responses, now use UDP broadcasts. Everything else stays the same. For example, client sends this UDP broadcast to IP 255.255.255.255, port 50022:
+
+```
+FINDReq=1;
+```
+And the host replies to IP 255.255.255.255, port 50022:
+
+```
+FIND=1;SN={serialNumber};HWADDR={MAC};DeviceName={DeviceName};
+```
