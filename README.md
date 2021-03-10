@@ -79,3 +79,37 @@ So a typical response now looks like this:
 ```
 FIND=1;SN=123456;HWADDR=AA:BB:CC:DD:EE:FF;DeviceName=Laser;NetworkMode=Static;Mask=255.255.255.0;Gateway=0.0.0.0;
 ```
+
+# New CONFReq and CONF messages
+
+SEGGER FIND is only about detecting devices. LC-FIND add a CONFReq request and CONF response messages, which are used to change device's network configuration.
+
+A typical successful command-response pair would like this:
+
+    CONFReq=1;HWADDR=AA:BB:CC:DD:EE:FF;NetworkMode=DHCP;
+    CONF=1;HWADDR=AA:BB:CC:DD:EE:FF;Status=AwaitingConfirmation;Result=Ok;
+
+If there was a problem of some sort, message exchange will look something like:
+
+    CONFReq=1;HWADDR=AA:BB:CC:DD:EE:FF;NetworkMode=Static;IP=192.168.11.251;Mask=255.255.255.0;Gateway=0.0.0.0;
+    CONF=1;HWADDR=AA:BB:CC:DD:EE:FF;Status=Ready;Result=Error-This IP address is reserved and cannot be used;
+
+Mandatory structure of "CONFReq" is:
+
+Key|Valid values|Description
+---|------------|-----------
+CONFReq|1|Request to change device configuration. Version 1.
+HWADDR|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device.
+NetworkMode|"DHCP" or "Static"|DHCP means that device is a DHCP client and receives its IP configuration dynamically from the router. Static means that device assigns itself a custom and configurable IP address, mask and gateway. 
+IP|IP address string in format "x.x.x.x"|New static IP address. Only relevant if NetworkMode=Static.
+Mask|IP address string in format "x.x.x.x"|New subnet mask. Only relevant if NetworkMode=Static.
+Gateway|IP address string in format "x.x.x.x"|New gateway address. Only relevant if NetworkMode=Static.
+
+And then response fields are:
+
+Key|Valid values|Description
+---|------------|-----------
+CONF|1|Indicates that this is a response to "CONFReq=1;" message.
+HWADDR|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device that processed CONFReq message.
+Status|"Ready", "AwaitingConfirmation", "Cooldown", "Disabled"|Ok - Reconfiguration succeeded. AwaitingConfirmation - Device waits for a physical confirmation to allow reconfiguration (e.g. a button press) (can be omitted if no means of physically confirming reconfiguration (e.g. a button) are present). Cooldown - Device is in a cooldown state and will not accept configuration requests for a while. Disabled - LC-FIND is disabled on host and it will not accept configuration request until enabled.
+Result|Any text string|Gives more information about errors. Actual content is not part of this specification.
