@@ -48,7 +48,7 @@ DeviceName|Any string without characters "=" or ";"|Name of the device which sho
 SEGGER's FIND protocol has an issue that it doesn't work when client and device are in different subnets. This is because SEGGER specifies that responses from the device must come as a UDP unicast. Also, there is no way of changing device configuration. So, LC-FIND adds theses changes to original protocol:
 
 - Instead of unicast responses, LC-FIND uses broadcast responses.
-- Additional data fields in FIND response: ```Status```, ```Result```, ```NetworkMode```, ```Mask```, ```Gateway```.
+- Additional data fields in FIND response: ```NetworkMode```, ```Mask```, ```Gateway```.
 - New ```CONFReq``` request and ```CONF``` response messages. 
 
 ## Using broadcast responses instead of unicast ones
@@ -62,4 +62,20 @@ And the host replies to IP 255.255.255.255, port 50022:
 
 ```
 FIND=1;SN={serialNumber};HWADDR={MAC};DeviceName={DeviceName};
+```
+
+## Adding additional data in responses
+
+LC-FIND can be used to change configuration of the device, so additional data fields had to be added to FIND=1 response so that user could know full information about current device configuration:
+
+Key|Valid values|Description
+---|------------|-----------
+NetworkMode|"DHCP" or "Static"|DHCP means that device is a DHCP client and receives its IP configuration dynamically from the router. Static means that device assigns itself a custom and configurable IP address, mask and gateway. 
+Mask|IP address string in format "x.x.x.x"|Currently used IPv4 subnet mask.
+Gateway|IP address string in format "x.x.x.x"|Currently used IPv4 subnet mask.
+
+So a typical response now looks like this:
+
+```
+FIND=1;SN=123456;HWADDR=AA:BB:CC:DD:EE:FF;DeviceName=Laser;NetworkMode=Static;Mask=255.255.255.0;Gateway=0.0.0.0;
 ```
