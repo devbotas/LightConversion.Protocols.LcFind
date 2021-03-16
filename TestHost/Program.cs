@@ -40,10 +40,40 @@ namespace TestHost {
 
             lcFindHost.Initialize(TrySetFakeNetworkConfiguration, TryGetFakeNetworkConfiguration);
             lcFindHost.EnableReconfiguration();
-            Console.WriteLine("Initialization completed. Listening.");
-            Console.WriteLine("Hit Enter to quit.");
 
-            Console.ReadLine();
+            Console.WriteLine("Initialization completed. Listening.");
+            Console.WriteLine("Hit en, dis, cen, cdis, con or q.");
+
+            var exitRequested = false;
+            while (exitRequested == false) {
+                var symbol = Console.ReadLine();
+
+                switch (symbol.ToLower()) {
+                    case "en":
+                        lcFindHost.EnableReconfiguration();
+                        break;
+
+                    case "dis":
+                        lcFindHost.DisableReconfiguration();
+                        break;
+
+                    case "cen":
+                        lcFindHost.IsConfirmationEnabled = true;
+                        break;
+
+                    case "cdis":
+                        lcFindHost.IsConfirmationEnabled = false;
+                        break;
+
+                    case "con":
+                        lcFindHost.Confirm();
+                        break;
+
+                    case "q":
+                        exitRequested = true;
+                        break;
+                }
+            }
         }
 
         private static bool TrySetFakeNetworkConfiguration(NetworkConfiguration newConfiguration) {
