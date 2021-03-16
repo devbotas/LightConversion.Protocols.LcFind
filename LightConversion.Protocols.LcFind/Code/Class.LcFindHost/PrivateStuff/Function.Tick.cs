@@ -62,17 +62,43 @@ namespace LightConversion.Protocols.LcFind {
                 _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = _unansweredConfRequest.Endpoint });
                 _unansweredConfRequest = null;
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.AwaitingConfirmation)) {
-                // todo.
+                ActualStatus = Status.AwaitingConfirmation;
+                Log.Info($"Going to state {nameof(Status.AwaitingConfirmation)} because host requires manual confirmation of the configuration change. Confirmation timeout is {ConfirmationTimeout} seconds.");
+                _confirmationEnd = DateTime.Now.AddSeconds(ConfirmationTimeout);
             } else if ((ActualStatus == Status.Ready) && (_targetStatus == Status.Disabled)) {
                 IsReconfigurationEnabled = false;
                 ActualStatus = Status.Disabled;
                 Log.Info($"Going to state {nameof(Status.Disabled)} upon host's request. LC-FIND is now disabled.");
             } else if ((ActualStatus == Status.AwaitingConfirmation) && (_targetStatus == Status.AwaitingConfirmation)) {
-                // todo.
+                if (DateTime.Now >= _confirmationEnd) {
+                    _targetStatus = Status.Ready;
+                }
             } else if ((ActualStatus == Status.AwaitingConfirmation) && (_targetStatus == Status.Cooldown)) {
-                // todo.
+                Log.Info($"Host confirmed configuration change, applying.");
+
+                NetworkConfiguration.TryFromRequestString(_unansweredConfRequest.Payload, out var requestedNewConfiguration, out var requestResult);
+
+                Log.Info($"Trying to set new network configuration ({requestedNewConfiguration.IpAddress} / {requestedNewConfiguration.SubnetMask} / {requestedNewConfiguration.GatewayAddress} / {requestedNewConfiguration.IsDhcpEnabled}) ...");
+                if (_trySetNetworkConfigurationDelegate(requestedNewConfiguration)) {
+                    Log.Info($"New configuration set. Host will now spend {CooldownTimeout} seconds in {nameof(Status.Cooldown)} state.");
+                    _cooldownEnd = DateTime.Now.AddSeconds(CooldownTimeout);
+                    requestResult = "Ok";
+                    ActualStatus = Status.Cooldown;
+                } else {
+                    Log.Error($"Unable to set requested configuration.");
+                    requestResult = "Error-Unable to set requested configuration";
+                    ActualStatus = Status.Ready;
+                }
+
+                responseMessage = BuildConfReqResponseString(requestResult);
+                _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = _unansweredConfRequest.Endpoint });
+                _unansweredConfRequest = null;
             } else if ((ActualStatus == Status.AwaitingConfirmation) && (_targetStatus == Status.Ready)) {
-                // todo.
+                Log.Info($"Confirmation period expired, going to state {nameof(Status.Ready)} without actually applying new configuration.");
+                ActualStatus = Status.Ready;
+                responseMessage = BuildConfReqResponseString("Error-Host did not confirm request in time");
+                _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = _unansweredConfRequest.Endpoint });
+                _unansweredConfRequest = null;
             } else if ((ActualStatus == Status.Cooldown) && (_targetStatus == Status.Disabled)) {
                 IsReconfigurationEnabled = false;
                 ActualStatus = Status.Disabled;

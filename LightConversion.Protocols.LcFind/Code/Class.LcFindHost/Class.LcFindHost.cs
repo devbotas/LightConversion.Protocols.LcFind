@@ -34,6 +34,7 @@ namespace LightConversion.Protocols.LcFind {
         private int _confirmationCounter = 0;
         private ClientRawMessage _unansweredConfRequest = null;
         private DateTime _cooldownEnd = new DateTime(2020, 01, 1);
+        private DateTime _confirmationEnd = new DateTime(2020, 01, 1);
         public int ConfirmationTimeout { get; set; } = 60;
         public int CooldownTimeout { get; set; } = 60;
         public bool IsConfirmationEnabled { get; set; }
