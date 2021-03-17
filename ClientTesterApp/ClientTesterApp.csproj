@@ -53,4 +53,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LightConversion.Protocols.LcFind\LightConversion.Protocols.LcFind.csproj" />
+  </ItemGroup>
+
 </Project>

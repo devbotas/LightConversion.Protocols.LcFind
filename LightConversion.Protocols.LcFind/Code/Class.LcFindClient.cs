@@ -21,44 +21,10 @@ namespace LightConversion.Protocols.LcFind {
             public string GatewayAddress { get; set; }
             public string SubnetMask { get; set; }
             public bool IsReachable { get; set; }
+            public string Status { get; set; }
 
             public string LookerNetworkInterfaceName { get; set; }
             public string LookerIpAddress { get; set; }
-        }
-
-        public static List<DeviceDescription> LookForDevices() {
-            var deviceDescriptions = new List<DeviceDescription>();
-
-            var localIpAddresses = GetAllLocalIpAddresses();
-
-            foreach (var localIpAddress in localIpAddresses) {
-                deviceDescriptions.AddRange(LookForDevices(localIpAddress.NetworkInterface, localIpAddress.IpAddress));
-            }
-
-            return deviceDescriptions;
-        }
-
-        public static List<(string NetworkInterface, IPAddress IpAddress)> GetAllLocalIpAddresses() {
-            var localIpAddresses = new List<(string NetworkInterface, IPAddress IpAddress)>();
-
-            foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces()) {
-                var isValidInterface = networkInterface.OperationalStatus == OperationalStatus.Up;
-                isValidInterface &= networkInterface.NetworkInterfaceType != NetworkInterfaceType.Loopback;
-
-                if (isValidInterface) {
-                    var ipProperties = networkInterface.GetIPProperties();
-
-                    var relevantUnicastIpAddress = ipProperties.UnicastAddresses.FirstOrDefault(u => u.Address.AddressFamily == AddressFamily.InterNetwork);
-
-                    if (relevantUnicastIpAddress != null) {
-                        localIpAddresses.Add((networkInterface.Name, relevantUnicastIpAddress.Address));
-                    }
-                } else {
-                    Debug.Print($"Skipping interface \"{networkInterface.Name}\".");
-                }
-            }
-
-            return localIpAddresses;
         }
 
         public static List<DeviceDescription> LookForDevices(string networkInterfaceName, IPAddress localAddress) {
@@ -98,7 +64,6 @@ namespace LightConversion.Protocols.LcFind {
                         if (string.IsNullOrEmpty(deviceDescription.SerialNumber) == false) {
                             if (deviceDescriptions.Any(d => d.SerialNumber == deviceDescription.SerialNumber) == false) {
                                 var remoteIpEndPoint = (IPEndPoint)remoteEndpoint;
-                                deviceDescription.IpAddress = remoteIpEndPoint.Address.ToString();
                                 deviceDescription.LookerIpAddress = localAddress.ToString();
                                 deviceDescription.LookerNetworkInterfaceName = networkInterfaceName;
 
@@ -121,64 +86,32 @@ namespace LightConversion.Protocols.LcFind {
             return deviceDescriptions;
         }
 
-
-        public static void ReconfigureDeviceWithStaticIp(string actualMacAddress, string localAdapterAddress, string newIpAddress, string newSubnetMask, string newGatewayAddress) {
-            try {
-                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
-                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, true);
-
-                    socket.Bind(new IPEndPoint(IPAddress.Parse(localAdapterAddress), 50022));
-
-                    var messageToSend = Encoding.UTF8.GetBytes($"CONFReq=1;HWADDR={actualMacAddress};NetworkMode=Static;IP={newIpAddress};Mask={newSubnetMask};Gateway={newGatewayAddress}\0");
-                    socket.SendTo(messageToSend, new IPEndPoint(IPAddress.Broadcast, 50022));
-                }
-            } catch (SocketException ex) {
-                // TODO: logging.
-                Debug.Print(ex.ToString());
-            }
-        }
-
-        public static void ReconfigureDeviceWithDhcp(string actualMacAddress, string localAdapterAddress) {
-            try {
-                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
-                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, true);
-
-                    socket.Bind(new IPEndPoint(IPAddress.Parse(localAdapterAddress), 50022));
-
-                    var messageToSend = Encoding.UTF8.GetBytes($"CONFReq=1;HWADDR={actualMacAddress};NetworkMode=DHCP\0");
-                    socket.SendTo(messageToSend, new IPEndPoint(IPAddress.Broadcast, 50022));
-                }
-            } catch (SocketException ex) {
-                // TODO: logging.
-                Debug.Print(ex.ToString());
-            }
-        }
-
         private static DeviceDescription ParseDeviceDescriptionFromString(string message) {
+            // A reusable helper.
+            static string GetParameterFromSeggerString(string seggerString, string parameterName) {
+                var parts = seggerString.Split(';');
+
+                for (int i = 0; i < parts.Length; i++) {
+                    if (parts[i].StartsWith($"{parameterName}=")) {
+                        return parts[i].Substring(parameterName.Length + 1).Trim('\0', ' ', '\r', '\n');
+                    }
+                }
+
+                return "";
+            }
+
             var parseResult = new DeviceDescription();
 
             parseResult.SerialNumber = GetParameterFromSeggerString(message, "SN");
+            parseResult.IpAddress = GetParameterFromSeggerString(message, "IP");
             parseResult.MacAddress = GetParameterFromSeggerString(message, "HWADDR");
             parseResult.DeviceName = GetParameterFromSeggerString(message, "DeviceName");
             parseResult.NetworkMode = GetParameterFromSeggerString(message, "NetworkMode");
             parseResult.SubnetMask = GetParameterFromSeggerString(message, "Mask");
             parseResult.GatewayAddress = GetParameterFromSeggerString(message, "Gateway");
+            parseResult.Status = GetParameterFromSeggerString(message, "Status");
 
             return parseResult;
-        }
-
-        private static string GetParameterFromSeggerString(string seggerString, string parameterName) {
-            var parts = seggerString.Split(';');
-
-            for (int i = 0; i < parts.Length; i++) {
-                if (parts[i].StartsWith($"{parameterName}=")) {
-                    return parts[i].Substring(parameterName.Length + 1).Trim('\0', ' ', '\r', '\n');
-                }
-            }
-
-            return "";
         }
     }
 }

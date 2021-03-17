@@ -1,7 +1,6 @@
 // Copyright 2021 Light Conversion, UAB
 // Licensed under the Apache 2.0, see LICENSE.md for more details.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,30 +9,17 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using LightConversion.Protocols.LcFind;
 
 namespace TestClient {
     public class DeviceFinder {
-        public class DeviceDescription {
-            public string SerialNumber { get; set; }
-            public string MacAddress { get; set; }
-            public string DeviceName { get; set; }
-            public string NetworkMode { get; set; }
-            public string IpAddress { get; set; }
-            public string GatewayAddress { get; set; }
-            public string SubnetMask { get; set; }
-            public bool IsReachable { get; set; }
-
-            public string LookerNetworkInterfaceName { get; set; }
-            public string LookerIpAddress { get; set; }
-        }
-
-        public static List<DeviceDescription> LookForDevices() {
-            var deviceDescriptions = new List<DeviceDescription>();
+        public static List<LcFindClient.DeviceDescription> LookForDevices() {
+            var deviceDescriptions = new List<LcFindClient.DeviceDescription>();
 
             var localIpAddresses = GetAllLocalIpAddresses();
 
             foreach (var localIpAddress in localIpAddresses) {
-                deviceDescriptions.AddRange(LookForDevices(localIpAddress.NetworkInterface, localIpAddress.IpAddress));
+                deviceDescriptions.AddRange(LcFindClient.LookForDevices(localIpAddress.NetworkInterface, localIpAddress.IpAddress));
             }
 
             return deviceDescriptions;
@@ -61,67 +47,6 @@ namespace TestClient {
 
             return localIpAddresses;
         }
-
-        public static List<DeviceDescription> LookForDevices(string networkInterfaceName, IPAddress localAddress) {
-            var deviceDescriptions = new List<DeviceDescription>();
-
-            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
-                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, true);
-                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontRoute, true);
-
-                // Need to bind, otherwise broadcasts won't be catch and only reachable devices could be detected.
-                try {
-                    // Previously I was binding to IPAddress.Any and it wasn't always working because it doesn't guarantee that correct network adapter will be used for sending broadcasts.
-                    // Therefore I am now explicitly binding to local IP address of known adapter. This way I am almost sure that broadcast is coming out from that adapter only.
-                    socket.Bind(new IPEndPoint(localAddress, 50022));
-                } catch (SocketException ex) {
-                    // TODO: logging.
-                    // May fail, if another app is already using this port without "ReuseAddress" flag.
-                    Debug.Print(ex.ToString());
-                }
-
-                var receiveBuffer = new byte[65535];
-
-                var messageToSend = Encoding.UTF8.GetBytes("FINDReq=1;\0");
-                socket.SendTo(messageToSend, new IPEndPoint(IPAddress.Broadcast, 50022));
-
-                // Allowing some time for messages to come.
-                Thread.Sleep(1000);
-
-                using (var ping = new Ping()) {
-                    while (socket.Available > 0) {
-                        EndPoint remoteEndpoint = new IPEndPoint(0, 0);
-                        var messageLength = socket.ReceiveFrom(receiveBuffer, ref remoteEndpoint);
-                        var message = Encoding.UTF8.GetString(receiveBuffer, 0, messageLength);
-
-                        var deviceDescription = ParseDeviceDescriptionFromString(message);
-                        if (string.IsNullOrEmpty(deviceDescription.SerialNumber) == false) {
-                            if (deviceDescriptions.Any(d => d.SerialNumber == deviceDescription.SerialNumber) == false) {
-                                var remoteIpEndPoint = (IPEndPoint)remoteEndpoint;
-                                // deviceDescription.IpAddress = remoteIpEndPoint.Address.ToString();
-                                deviceDescription.LookerIpAddress = localAddress.ToString();
-                                deviceDescription.LookerNetworkInterfaceName = networkInterfaceName;
-
-                                deviceDescriptions.Add(deviceDescription);
-
-                                try {
-                                    var pingResult = ping.Send(remoteIpEndPoint.Address, 100);
-                                    if (pingResult != null && pingResult.Status == IPStatus.Success) {
-                                        deviceDescription.IsReachable = true;
-                                    }
-                                } catch (PingException ex) {
-                                    Debug.Print(ex.ToString());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return deviceDescriptions;
-        }
-
 
         public static void ReconfigureDeviceWithStaticIp(string actualMacAddress, string localAdapterAddress, string newIpAddress, string newSubnetMask, string newGatewayAddress) {
             try {
@@ -157,8 +82,8 @@ namespace TestClient {
             }
         }
 
-        private static DeviceDescription ParseDeviceDescriptionFromString(string message) {
-            var parseResult = new DeviceDescription();
+        private static LcFindClient.DeviceDescription ParseDeviceDescriptionFromString(string message) {
+            var parseResult = new LcFindClient.DeviceDescription();
 
             parseResult.SerialNumber = GetParameterFromSeggerString(message, "SN");
             parseResult.IpAddress = GetParameterFromSeggerString(message, "IP");

@@ -2,12 +2,13 @@
 // Licensed under the Apache 2.0, see LICENSE.md for more details.
 
 using System.Collections.Generic;
+using LightConversion.Protocols.LcFind;
 using SimpleMvvmToolkit;
 
 namespace TestClient {
     public class DeviceDataViewModel : ViewModelBase<DeviceDataViewModel> {
-        private DeviceFinder.DeviceDescription _actualDescription = new DeviceFinder.DeviceDescription();
-        public DeviceFinder.DeviceDescription ActualDescription {
+        private LcFindClient.DeviceDescription _actualDescription = new LcFindClient.DeviceDescription();
+        public LcFindClient.DeviceDescription ActualDescription {
             get { return _actualDescription; }
             set {
                 if (_actualDescription == value) return;

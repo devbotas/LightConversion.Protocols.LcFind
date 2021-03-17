@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using LightConversion.Protocols.LcFind;
 using SimpleMvvmToolkit;
 
 namespace TestClient {
@@ -44,8 +45,10 @@ namespace TestClient {
 
         public MirandaViewModel() {
             if (this.IsInDesignMode()) {
+                IsSomethingDetected = true;
+
                 DetectedDevices.Add(new DeviceDataViewModel {
-                    ActualDescription = new DeviceFinder.DeviceDescription {
+                    ActualDescription = new LcFindClient.DeviceDescription {
                         DeviceName = "Pharos",
                         IpAddress = "192.168.11.251",
                         IsReachable = true,
