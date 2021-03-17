@@ -15,7 +15,7 @@
                  Height="450"
                  Closing="HandleClosingEvent"
                  DataContext="{Binding Source={x:Static testClient:GlobalStuff.Instance}, Path=MirandaViewModel}"
-                 GlowBrush="{DynamicResource AccentColorBrush}"
+                 GlowBrush="{DynamicResource MahApps.Brushes.Accent}"
                  Loaded="HandleLoadedEvent"
                  mc:Ignorable="d">
     <Grid>
@@ -54,14 +54,14 @@
             <TextBlock Grid.Row="0" Grid.Column="0"
                        Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"
                        FontSize="24"
-                       Foreground="{StaticResource AccentColorBrush}"
+                       Foreground="{StaticResource MahApps.Brushes.Accent}"
                        Text="Devices in Network" />
 
 
             <TextBlock Grid.Row="0" Grid.Column="1"
                        Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"
                        FontSize="24"
-                       Foreground="{StaticResource AccentColorBrush}"
+                       Foreground="{StaticResource MahApps.Brushes.Accent}"
                        Text="Details" />
 
             <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
