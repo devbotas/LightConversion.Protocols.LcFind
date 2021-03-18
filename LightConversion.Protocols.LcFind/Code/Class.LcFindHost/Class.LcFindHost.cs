@@ -3,9 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using NLog;
 
@@ -14,8 +12,8 @@ namespace LightConversion.Protocols.LcFind {
         private static readonly Logger Log = LogManager.GetLogger(nameof(LcFindHost));
         private readonly CancellationTokenSource _globalCancellationTokenSource = new CancellationTokenSource();
 
-        private TrySetNetworkConfigurationDelegate _trySetNetworkConfigurationDelegate = null;
-        private TryGetNetworkConfigurationDelegate _tryGetNetworkConfigurationDelegate = null;
+        private TrySetNetworkConfigurationDelegate _trySetNetworkConfigurationDelegate;
+        private TryGetNetworkConfigurationDelegate _tryGetNetworkConfigurationDelegate;
 
         public delegate bool TrySetNetworkConfigurationDelegate(NetworkConfiguration newConfiguration);
 
@@ -23,15 +21,14 @@ namespace LightConversion.Protocols.LcFind {
 
         private string _hwAddress;
         private Socket _listeningSocket;
-        private ConcurrentQueue<ClientRawMessage> _udpReceiveQueue = new ConcurrentQueue<ClientRawMessage>();
-        private ConcurrentQueue<ClientRawMessage> _udpSendQueue = new ConcurrentQueue<ClientRawMessage>();
+        private readonly ConcurrentQueue<ClientRawMessage> _udpReceiveQueue = new ConcurrentQueue<ClientRawMessage>();
+        private readonly ConcurrentQueue<ClientRawMessage> _udpSendQueue = new ConcurrentQueue<ClientRawMessage>();
 
         public string SerialNumber { get; set; } = $"Unknown-{Guid.NewGuid()}";
         public string DeviceName { get; set; } = $"Unknown-{Guid.NewGuid()}";
         public Status ActualStatus { get; private set; } = Status.Disabled;
         private Status _targetStatus;
 
-        private int _confirmationCounter = 0;
         private ClientRawMessage _unansweredConfRequest = null;
         private DateTime _cooldownEnd = new DateTime(2020, 01, 1);
         private DateTime _confirmationEnd = new DateTime(2020, 01, 1);

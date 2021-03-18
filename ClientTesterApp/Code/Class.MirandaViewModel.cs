@@ -3,7 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading.Tasks;
 using LightConversion.Protocols.LcFind;
 using SimpleMvvmToolkit;
@@ -48,10 +53,9 @@ namespace TestClient {
                 IsSomethingDetected = true;
 
                 DetectedDevices.Add(new DeviceDataViewModel {
-                    ActualDescription = new LcFindClient.DeviceDescription {
+                    ActualDescription = new DeviceDescription {
                         DeviceName = "Pharos",
                         IpAddress = "192.168.11.251",
-                        IsReachable = true,
                         MacAddress = "11:22:33:44:55:66",
                         NetworkMode = "StaticIp",
                         SerialNumber = "PH123456",
@@ -84,15 +88,33 @@ namespace TestClient {
                     IsSomethingDetected = false;
 
                     await Task.Run(() => {
-                        var foundDevices = DeviceFinder.LookForDevices();
-                        IsSomethingDetected = foundDevices.Count > 0;
+                        var foundDeviceDataViewModels = new List<DeviceDataViewModel>();
 
-                        var deviceViewModels = new List<DeviceDataViewModel>();
-                        foreach (var deviceDescription in foundDevices) {
-                            deviceViewModels.Add(new DeviceDataViewModel { ActualDescription = deviceDescription });
+                        var localIpAddresses = GetAllLocalIpAddresses();
+
+                        foreach (var localIpAddress in localIpAddresses) {
+                            var devicesFoundOnThisInterface = LcFindClient.LookForDevices(localIpAddress.IpAddress);
+
+                            foreach (var deviceDescription in devicesFoundOnThisInterface) {
+                                var isReachable = false;
+                                using (var ping = new Ping()) {
+                                    try {
+                                        var pingResult = ping.Send(deviceDescription.IpAddress, 100);
+                                        if ((pingResult != null) && (pingResult.Status == IPStatus.Success)) {
+                                            isReachable = true;
+                                        }
+                                    } catch (PingException ex) {
+                                        Debug.Print(ex.ToString());
+                                    }
+                                }
+
+                                foundDeviceDataViewModels.Add(new DeviceDataViewModel { ActualDescription = deviceDescription, IsReachable = isReachable, LookerIpAddress = localIpAddress.IpAddress.ToString(), LookerNetworkInterfaceName = localIpAddress.NetworkInterface });
+                            }
                         }
 
-                        DetectedDevices = deviceViewModels;
+                        IsSomethingDetected = foundDeviceDataViewModels.Count > 0;
+
+                        DetectedDevices = foundDeviceDataViewModels;
                         SelectedDevice = DetectedDevices.FirstOrDefault();
                     });
 
@@ -130,11 +152,11 @@ namespace TestClient {
                     IsSaveCommandBusy = true;
 
                     if (parameter.TargetIsUsingDhcp) {
-                        DeviceFinder.ReconfigureDeviceWithDhcp(parameter.ActualDescription.MacAddress, parameter.ActualDescription.LookerIpAddress);
+                        ReconfigureDeviceWithDhcp(parameter.ActualDescription.MacAddress, parameter.LookerIpAddress);
                     }
 
                     if (parameter.TargetIsUsingStaticIp) {
-                        DeviceFinder.ReconfigureDeviceWithStaticIp(parameter.ActualDescription.MacAddress, parameter.ActualDescription.LookerIpAddress, parameter.TargetIpAddress, parameter.TargetSubnetMask, parameter.TargetGatewayAddress);
+                        ReconfigureDeviceWithStaticIp(parameter.ActualDescription.MacAddress, parameter.LookerIpAddress, parameter.TargetIpAddress, parameter.TargetSubnetMask, parameter.TargetGatewayAddress);
                     }
 
                     await Task.Delay(10000);
@@ -157,6 +179,65 @@ namespace TestClient {
 
         public void Initialize() {}
 
-        public void Dispose() {}
+        public void Dispose() {
+#warning Nice implementation!
+        }
+
+        public static List<(string NetworkInterface, IPAddress IpAddress)> GetAllLocalIpAddresses() {
+            var localIpAddresses = new List<(string NetworkInterface, IPAddress IpAddress)>();
+
+            foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces()) {
+                var isValidInterface = networkInterface.OperationalStatus == OperationalStatus.Up;
+                isValidInterface &= networkInterface.NetworkInterfaceType != NetworkInterfaceType.Loopback;
+
+                if (isValidInterface) {
+                    var ipProperties = networkInterface.GetIPProperties();
+
+                    var relevantUnicastIpAddress = ipProperties.UnicastAddresses.FirstOrDefault(u => u.Address.AddressFamily == AddressFamily.InterNetwork);
+
+                    if (relevantUnicastIpAddress != null) {
+                        localIpAddresses.Add((networkInterface.Name, relevantUnicastIpAddress.Address));
+                    }
+                } else {
+                    Debug.Print($"Skipping interface \"{networkInterface.Name}\".");
+                }
+            }
+
+            return localIpAddresses;
+        }
+
+        public static void ReconfigureDeviceWithStaticIp(string actualMacAddress, string localAdapterAddress, string newIpAddress, string newSubnetMask, string newGatewayAddress) {
+            try {
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, true);
+
+                    socket.Bind(new IPEndPoint(IPAddress.Parse(localAdapterAddress), 50022));
+
+                    var messageToSend = Encoding.UTF8.GetBytes($"CONFReq=1;HWADDR={actualMacAddress};NetworkMode=Static;IP={newIpAddress};Mask={newSubnetMask};Gateway={newGatewayAddress}\0");
+                    socket.SendTo(messageToSend, new IPEndPoint(IPAddress.Broadcast, 50022));
+                }
+            } catch (SocketException ex) {
+                // TODO: logging.
+                Debug.Print(ex.ToString());
+            }
+        }
+
+        public static void ReconfigureDeviceWithDhcp(string actualMacAddress, string localAdapterAddress) {
+            try {
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, true);
+
+                    socket.Bind(new IPEndPoint(IPAddress.Parse(localAdapterAddress), 50022));
+
+                    var messageToSend = Encoding.UTF8.GetBytes($"CONFReq=1;HWADDR={actualMacAddress};NetworkMode=DHCP\0");
+                    socket.SendTo(messageToSend, new IPEndPoint(IPAddress.Broadcast, 50022));
+                }
+            } catch (SocketException ex) {
+                // TODO: logging.
+                Debug.Print(ex.ToString());
+            }
+        }
     }
 }

@@ -10,8 +10,8 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:testClient="clr-namespace:TestClient"
-                 Title="Miranda 1.0.1"
-                 Width="850"
+                 Title="LC-FIND device detector"
+                 Width="1024"
                  Height="450"
                  Closing="HandleClosingEvent"
                  DataContext="{Binding Source={x:Static testClient:GlobalStuff.Instance}, Path=MirandaViewModel}"
@@ -48,14 +48,21 @@
 
             <Grid.ColumnDefinitions>
                 <ColumnDefinition />
-                <ColumnDefinition Width="350" />
+                <ColumnDefinition Width="250" />
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Row="0" Grid.Column="0"
-                       Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       FontSize="24"
-                       Foreground="{StaticResource MahApps.Brushes.Accent}"
-                       Text="Devices in Network" />
+
+            <StackPanel Grid.Row="0" Grid.Column="0"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                <TextBlock Margin="5" VerticalAlignment="Center"
+                           FontSize="24"
+                           Foreground="{StaticResource MahApps.Brushes.Accent}"
+                           Text="Devices in Network" />
+                <Button Margin="5" VerticalAlignment="Center"
+                        Command="{Binding ScanCommand}"
+                        Content="Refresh" />
+            </StackPanel>
 
 
             <TextBlock Grid.Row="0" Grid.Column="1"
@@ -87,22 +94,16 @@
                                         Header="Status" IsReadOnly="True" />
                     <DataGridTextColumn Binding="{Binding ActualDescription.NetworkMode}"
                                         Header="Mode" IsReadOnly="True" />
-                    <DataGridTextColumn Binding="{Binding ActualDescription.LookerIpAddress}"
-                                        Header="Detected through IP" IsReadOnly="True" />
-                    <DataGridTextColumn Binding="{Binding ActualDescription.LookerNetworkInterfaceName}"
-                                        Header="Detected through adapter" IsReadOnly="True" />
+                    <DataGridTextColumn Binding="{Binding LookerIpAddress}"
+                                        Header="Through IP" IsReadOnly="True" />
+                    <DataGridTextColumn Binding="{Binding LookerNetworkInterfaceName}"
+                                        Header="Through adapter" IsReadOnly="True" />
                 </DataGrid.Columns>
             </DataGrid>
 
             <testClient:EditorView Grid.Row="1" Grid.Column="1"
                                    Margin="5"
                                    IsEnabled="{Binding Source={x:Static testClient:GlobalStuff.Instance}, Path=MirandaViewModel.IsSomethingDetected}" />
-
-            <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
-                    Height="50"
-                    Margin="5"
-                    Command="{Binding ScanCommand}"
-                    Content="Refresh" />
         </Grid>
     </Grid>
 </mah:MetroWindow>

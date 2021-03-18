@@ -7,8 +7,10 @@ using SimpleMvvmToolkit;
 
 namespace TestClient {
     public class DeviceDataViewModel : ViewModelBase<DeviceDataViewModel> {
-        private LcFindClient.DeviceDescription _actualDescription = new LcFindClient.DeviceDescription();
-        public LcFindClient.DeviceDescription ActualDescription {
+        public List<string> AvailableNetworkModes { get; } = new List<string> { "DHCP", "Static" };
+
+        private DeviceDescription _actualDescription = new DeviceDescription();
+        public DeviceDescription ActualDescription {
             get { return _actualDescription; }
             set {
                 if (_actualDescription == value) return;
@@ -26,7 +28,38 @@ namespace TestClient {
             }
         }
 
-        public List<string> AvailableNetworkModes { get; } = new List<string> { "DHCP", "Static" };
+        private bool _isReachable;
+        public bool IsReachable {
+            get { return _isReachable; }
+            set {
+                if (_isReachable == value) return;
+
+                _isReachable = value;
+                NotifyPropertyChanged(m => m.IsReachable);
+            }
+        }
+
+        private string _lookerIpAddress;
+        public string LookerIpAddress {
+            get { return _lookerIpAddress; }
+            set {
+                if (_lookerIpAddress == value) return;
+
+                _lookerIpAddress = value;
+                NotifyPropertyChanged(m => m.LookerIpAddress);
+            }
+        }
+
+        private string _lookerNetworkInterfaceName;
+        public string LookerNetworkInterfaceName {
+            get { return _lookerNetworkInterfaceName; }
+            set {
+                if (_lookerNetworkInterfaceName == value) return;
+
+                _lookerNetworkInterfaceName = value;
+                NotifyPropertyChanged(m => m.LookerNetworkInterfaceName);
+            }
+        }
 
         private string _targetNetworkMode;
         public string TargetNetworkMode {

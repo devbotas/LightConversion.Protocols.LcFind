@@ -69,14 +69,14 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock VerticalAlignment="Center"
                            FontSize="14"
-                           Text="{Binding ActualDescription.IsReachable}" />
+                           Text="{Binding IsReachable}" />
                 <testClient:QuestionSymbol Margin="5,0,0,0"
                                            ToolTip="Ping failed. Check if your subnets match."
-                                           Visibility="{Binding ActualDescription.IsReachable, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=False}" />
+                                           Visibility="{Binding IsReachable, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=False}" />
 
                 <testClient:QuestionSymbol Margin="5,0,0,0"
                                            ToolTip="Ping succeeded."
-                                           Visibility="{Binding ActualDescription.IsReachable, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=True}" />
+                                           Visibility="{Binding IsReachable, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=True}" />
             </StackPanel>
         </Label>
 
