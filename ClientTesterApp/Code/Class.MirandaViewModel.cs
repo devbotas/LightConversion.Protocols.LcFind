@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Light Conversion, UAB
+// Copyright 2021 Light Conversion, UAB
 // Licensed under the Apache 2.0, see LICENSE.md for more details.
 
 using System;
@@ -37,20 +37,20 @@ namespace TestClient {
             }
         }
 
-        private bool _isSomethingDetected;
-        public bool IsSomethingDetected {
-            get { return _isSomethingDetected; }
+        private bool _noDevicesDetected;
+        public bool NoDevicesDetected {
+            get { return _noDevicesDetected; }
             set {
-                if (_isSomethingDetected == value) return;
+                if (_noDevicesDetected == value) return;
 
-                _isSomethingDetected = value;
-                NotifyPropertyChanged(m => m.IsSomethingDetected);
+                _noDevicesDetected = value;
+                NotifyPropertyChanged(m => m.NoDevicesDetected);
             }
         }
 
         public MirandaViewModel() {
             if (this.IsInDesignMode()) {
-                IsSomethingDetected = true;
+                NoDevicesDetected = false;
 
                 DetectedDevices.Add(new DeviceDataViewModel {
                     ActualDescription = new DeviceDescription {
@@ -85,7 +85,7 @@ namespace TestClient {
                 _scanCommand = new DelegateCommand(async () => {
                     IsScanCommandBusy = true;
                     DetectedDevices = new List<DeviceDataViewModel>();
-                    IsSomethingDetected = false;
+                    NoDevicesDetected = true;
 
                     await Task.Run(() => {
                         var foundDeviceDataViewModels = new List<DeviceDataViewModel>();
@@ -112,7 +112,7 @@ namespace TestClient {
                             }
                         }
 
-                        IsSomethingDetected = foundDeviceDataViewModels.Count > 0;
+                        NoDevicesDetected = foundDeviceDataViewModels.Count == 0;
 
                         DetectedDevices = foundDeviceDataViewModels;
                         SelectedDevice = DetectedDevices.FirstOrDefault();

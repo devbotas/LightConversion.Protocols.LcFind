@@ -6,7 +6,6 @@
 <Application x:Class="Miranda.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:bindingConverters="clr-namespace:LightConversion.Software.BindingConverters;assembly=LightConversion.Software.BindingConverters"
              StartupUri="Code/MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
@@ -20,7 +19,7 @@
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.AnimatedTabControl.xaml" />-->
             </ResourceDictionary.MergedDictionaries>
 
-            <bindingConverters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

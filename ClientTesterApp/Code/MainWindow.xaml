@@ -1,4 +1,4 @@
-﻿<!--
+<!--
     Copyright 2021 Light Conversion, UAB
     Licensed under the Apache 2.0, see LICENSE.md for more details.
 -->
@@ -74,7 +74,7 @@
             <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Panel.ZIndex="1"
                    Background="#DDFFFFFF" Content="No devices detected" FontSize="20"
-                   Visibility="{Binding IsSomethingDetected, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=False}" />
+                   Visibility="{Binding NoDevicesDetected, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
             <DataGrid Grid.Row="1" Grid.Column="0"
                       Margin="5"
