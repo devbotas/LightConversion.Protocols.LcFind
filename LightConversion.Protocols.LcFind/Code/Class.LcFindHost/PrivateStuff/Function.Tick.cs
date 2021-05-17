@@ -62,6 +62,7 @@ namespace LightConversion.Protocols.LcFind {
                     _log.Error($"Unable to set requested configuration.");
                     requestResult = "Error-Unable to set requested configuration";
                     ActualStatus = Status.Ready;
+                    _targetStatus = Status.Ready;
                 }
 
                 responseMessage = BuildConfReqResponseString(requestResult);
