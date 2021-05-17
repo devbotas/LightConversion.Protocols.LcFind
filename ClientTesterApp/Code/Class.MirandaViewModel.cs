@@ -1,4 +1,4 @@
-// Copyright 2021 Light Conversion, UAB
+﻿// Copyright 2021 Light Conversion, UAB
 // Licensed under the Apache 2.0, see LICENSE.md for more details.
 
 using System;
@@ -177,7 +177,7 @@ namespace TestClient {
             }
         }
 
-        public void Initialize() {}
+        public void Initialize() { }
 
         public void Dispose() {
 #warning Nice implementation!
