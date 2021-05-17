@@ -17,7 +17,7 @@ namespace LightConversion.Protocols.LcFind {
             static string GetParameterFromSeggerString(string seggerString, string parameterName) {
                 var parts = seggerString.Split(';');
 
-                for (int i = 0; i < parts.Length; i++) {
+                for (var i = 0; i < parts.Length; i++) {
                     if (parts[i].StartsWith($"{parameterName}=")) {
                         return parts[i].Substring(parameterName.Length + 1).Trim('\0', ' ', '\r', '\n');
                     }

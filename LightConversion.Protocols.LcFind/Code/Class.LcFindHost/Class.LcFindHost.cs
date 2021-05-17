@@ -9,9 +9,11 @@ using System.Threading;
 using NLog;
 
 namespace LightConversion.Protocols.LcFind {
-
+    /// <summary>
+    /// Provides LC-FIND host-side functionality.
+    /// </summary>
     public partial class LcFindHost : IDisposable {
-        private static readonly Logger Log = LogManager.GetLogger(nameof(LcFindHost));
+        private static readonly Logger _log = LogManager.GetCurrentClassLogger();
         private readonly CancellationTokenSource _globalCancellationTokenSource = new();
         private bool _isInitialized;
         private readonly ConcurrentQueue<ClientRawMessage> _udpReceiveQueue = new();

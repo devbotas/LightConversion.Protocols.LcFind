@@ -10,29 +10,30 @@ namespace LightConversion.Protocols.LcFind {
         private void SendResponse(string responseMessage, IPEndPoint remoteEndpoint) {
             var dataBytes = Encoding.UTF8.GetBytes(responseMessage);
 
-            // This response is to conform to Segger FIND protocol. It only accepts responses directly back to the sender. If host and client are on the different subnets, response will not be received, though.
-            Log.Debug($"Sending response to {remoteEndpoint}: {responseMessage}");
+            // This response is to conform to Segger FIND protocol. It only accepts responses directly back to the sender.
+            // If host and client are on the different subnets, response will not be received, though.
+            _log.Debug($"Sending response to {remoteEndpoint}: {responseMessage}");
             try {
                 _listeningSocket.SendTo(dataBytes, dataBytes.Length, SocketFlags.None, remoteEndpoint);
             } catch (SocketException ex) {
                 if (ex.SocketErrorCode == SocketError.HostUnreachable) {
-                    Log.Debug(ex, "Can't send local response because host is unreachable, probably subnets don't match. Global response should still go through.");
+                    _log.Debug(ex, "Can't send local response because host is unreachable, probably subnets don't match. Global response should still go through.");
                 } else if (ex.SocketErrorCode == SocketError.NetworkUnreachable) {
-                    Log.Debug(ex, "Can't send local response because network is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
+                    _log.Debug(ex, "Can't send local response because network is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
                 } else {
                     throw;
                 }
             }
 
             // Also broadcasting the same response, because this way it may pass through different subnets and stuff. 
-            Log.Debug("Sending the same response globally");
+            _log.Debug("Sending the same response globally");
             try {
                 _listeningSocket.SendTo(dataBytes, dataBytes.Length, SocketFlags.None, new IPEndPoint(IPAddress.Broadcast, 50022));
             } catch (SocketException ex) {
                 if (ex.SocketErrorCode == SocketError.NetworkUnreachable) {
-                    Log.Debug(ex, "Can't send global response because network is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
+                    _log.Debug(ex, "Can't send global response because network is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
                 } else if (ex.SocketErrorCode == SocketError.HostUnreachable) {
-                    Log.Debug(ex, "Can't send global response because host is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
+                    _log.Debug(ex, "Can't send global response because host is unreachable, but that is actually ok. Probably NIC doesn't have an IP address yet.");
                 } else {
                     throw;
                 }

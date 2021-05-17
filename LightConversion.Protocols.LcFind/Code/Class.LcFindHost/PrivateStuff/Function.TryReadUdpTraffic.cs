@@ -22,16 +22,16 @@ namespace LightConversion.Protocols.LcFind {
 
             if (receivedLength == 0) {
                 isOk = false;
-                Log.Warn("Message of zero length received");
+                _log.Warn("Message of zero length received");
             }
 
             if (isOk) {
                 try {
                     payload = Encoding.UTF8.GetString(receiveBuffer, 0, receivedLength);
-                    Log.Debug($"Received from {remoteEndpoint}: {payload}");
+                    _log.Debug($"Received from {remoteEndpoint}: {payload}");
                 } catch (Exception ex) {
                     isOk = false;
-                    Log.Error(ex, "Skipping this message due to unparsable string");
+                    _log.Error(ex, "Skipping this message due to unparsable string");
                 }
             }
 

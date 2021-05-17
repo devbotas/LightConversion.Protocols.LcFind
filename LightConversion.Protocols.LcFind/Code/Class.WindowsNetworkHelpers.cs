@@ -9,8 +9,11 @@ using System.Net.Sockets;
 using NLog;
 
 namespace LightConversion.Protocols.LcFind {
+    /// <summary>
+    /// A helper class for Windows platform.
+    /// </summary>
     public class WindowsNetworkHelpers {
-        private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+        private static readonly Logger _log = LogManager.GetCurrentClassLogger();
 
         public static bool ChangeNetworkConfiguration(string networkInterfaceName, NetworkConfiguration newConfiguration) {
             bool isOk;
@@ -22,15 +25,15 @@ namespace LightConversion.Protocols.LcFind {
                     process.StartInfo.UseShellExecute = false;
                     process.StartInfo.RedirectStandardOutput = true;
 
-                    Log.Debug($"Executing command: netsh {process.StartInfo.Arguments}");
+                    _log.Debug($"Executing command: netsh {process.StartInfo.Arguments}");
                     process.Start();
 
                     var output = process.StandardOutput.ReadToEnd();
                     process.WaitForExit();
                     isOk = process.ExitCode == 0;
 
-                    Log.Debug($"Output: {output}");
-                    Log.Debug($"Exit code: {process.ExitCode}");
+                    _log.Debug($"Output: {output}");
+                    _log.Debug($"Exit code: {process.ExitCode}");
                 }
             } else {
                 using (var process = new Process()) {
@@ -43,15 +46,15 @@ namespace LightConversion.Protocols.LcFind {
                     process.StartInfo.UseShellExecute = false;
                     process.StartInfo.RedirectStandardOutput = true;
 
-                    Log.Debug($"Executing command: netsh {process.StartInfo.Arguments}");
+                    _log.Debug($"Executing command: netsh {process.StartInfo.Arguments}");
                     process.Start();
 
                     var output = process.StandardOutput.ReadToEnd();
                     process.WaitForExit();
                     isOk = process.ExitCode == 0;
 
-                    Log.Debug($"Output: {output}");
-                    Log.Debug($"Exit code: {process.ExitCode}");
+                    _log.Debug($"Output: {output}");
+                    _log.Debug($"Exit code: {process.ExitCode}");
                 }
             }
 

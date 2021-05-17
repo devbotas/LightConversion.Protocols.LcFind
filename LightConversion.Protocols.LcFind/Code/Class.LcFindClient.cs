@@ -10,7 +10,14 @@ using System.Text;
 using System.Threading;
 
 namespace LightConversion.Protocols.LcFind {
+    /// <summary>
+    /// Provides LC-FIND client-side functionality.
+    /// </summary>
     public class LcFindClient {
+        /// <summary>
+        /// Searches for the available devices on the network.
+        /// </summary>
+        /// <param name="localAddress">IP address to search from. This IP address basically corresponds to a network adapter. There may be many networks adapters in the systems, some of them being virtual or otherwise unusable for LC-FIND. Look in helper calsses for inspiration of how to distinguish "bad" adapters from "good" ones. </param>
         public static List<DeviceDescription> LookForDevices(IPAddress localAddress) {
             var deviceDescriptions = new List<DeviceDescription>();
 

@@ -11,8 +11,11 @@ using System.Threading;
 using NLog;
 
 namespace LightConversion.Protocols.LcFind {
+    /// <summary>
+    /// A helper class for Linux platform.
+    /// </summary>
     public class LinuxNetworkHelpers {
-        private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+        private static readonly Logger _log = LogManager.GetCurrentClassLogger();
 
         public static bool ChangeNetworkConfiguration(string networkInterfaceName, NetworkConfiguration newConfiguration) {
             var configurationBuilder = new StringBuilder();
@@ -50,6 +53,91 @@ namespace LightConversion.Protocols.LcFind {
             } else {
                 return false;
             }
+        }
+
+        public static (int ExitCode, string Output) ExecuteLinuxCommand(string fileName, string arguments) {
+            int exitCode;
+            string output;
+
+            using (var process = new Process()) {
+                process.StartInfo.FileName = fileName;
+                process.StartInfo.Arguments = arguments;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardOutput = true;
+
+                try {
+                    process.Start();
+                    output = process.StandardOutput.ReadToEnd();
+                    process.WaitForExit();
+                    exitCode = process.ExitCode;
+                } catch (Exception ex) {
+                    _log.Error(ex, $"Starting process \"{fileName}\" with arguments \"{arguments}\" failed with exception. Probably such linux command doesn't exist.");
+                    exitCode = -1;
+                    output = "";
+                }
+            }
+
+            return (exitCode, output);
+        }
+
+        public static NetworkConfiguration GetActualNetworkConfiguration(string networkInterfaceName) {
+            var actualConfig = new NetworkConfiguration();
+
+            var ipAddressCommandResult = ExecuteLinuxCommand("ip", "address show " + networkInterfaceName);
+
+            var macAddressRegex = new Regex("link/ether (..:..:..:..:..:..) brd");
+            var macAddressMatch = macAddressRegex.Match(ipAddressCommandResult.Output);
+
+            if (macAddressMatch.Success) {
+                actualConfig.MacAddress = macAddressMatch.Groups[1].Value;
+            } else {
+                _log.Error($"Parsing MAC from output \"{ipAddressCommandResult.Output}\" failed.");
+            }
+
+            var dhcpAddressRegex = new Regex(@"inet ([0-9]*\.[0-9]*.[0-9]*.[0-9]*)\/(..).*scope global dynamic " + networkInterfaceName);
+            var dhcpAddressMatch = dhcpAddressRegex.Match(ipAddressCommandResult.Output);
+
+            if (dhcpAddressMatch.Success) {
+                actualConfig.IsDhcpEnabled = true;
+                actualConfig.IpAddress = IPAddress.Parse(dhcpAddressMatch.Groups[1].Value);
+
+                var subnetBitCount = int.Parse(dhcpAddressMatch.Groups[2].Value);
+                actualConfig.SubnetMask = ConvertBitsCountToAddress(subnetBitCount);
+            } else {
+                var staticAddressRegex = new Regex(@"inet ([0-9]*\.[0-9]*.[0-9]*.[0-9]*)\/(..).*scope global " + networkInterfaceName);
+                var staticAddressMatch = staticAddressRegex.Match(ipAddressCommandResult.Output);
+
+                if (staticAddressMatch.Success) {
+                    actualConfig.IsDhcpEnabled = false;
+                    actualConfig.IpAddress = IPAddress.Parse(staticAddressMatch.Groups[1].Value);
+
+                    var subnetBitCount = int.Parse(staticAddressMatch.Groups[2].Value);
+                    actualConfig.SubnetMask = ConvertBitsCountToAddress(subnetBitCount);
+                } else {
+                    var dhcpFallbackAddressRegex = new Regex(@"inet ([0-9]*\.[0-9]*.[0-9]*.[0-9]*)\/(..).*scope link " + networkInterfaceName);
+                    var dhcpFallbackAddressMatch = dhcpFallbackAddressRegex.Match(ipAddressCommandResult.Output);
+
+                    if (dhcpFallbackAddressMatch.Success) {
+                        actualConfig.IsDhcpEnabled = true;
+                        actualConfig.IpAddress = IPAddress.Parse(dhcpFallbackAddressMatch.Groups[1].Value);
+
+                        var subnetBitCount = int.Parse(dhcpFallbackAddressMatch.Groups[2].Value);
+                        actualConfig.SubnetMask = ConvertBitsCountToAddress(subnetBitCount);
+                    }
+                }
+            }
+
+            var iprCommandOutput = ExecuteLinuxCommand("ip", "r");
+            var gatewayRegex = new Regex(@"default via ([0-9]*\.[0-9]*.[0-9]*.[0-9]*) dev " + networkInterfaceName);
+            var gatewayMatch = gatewayRegex.Match(iprCommandOutput.Output);
+
+            if (gatewayMatch.Success) {
+                actualConfig.GatewayAddress = IPAddress.Parse(gatewayMatch.Groups[1].Value);
+            } else {
+                actualConfig.GatewayAddress = IPAddress.Parse("0.0.0.0");
+            }
+
+            return actualConfig;
         }
 
         private static int CalculateNumberOfBitsInIpAddress(IPAddress ipAddress) {
@@ -119,66 +207,6 @@ namespace LightConversion.Protocols.LcFind {
         192.168.1.254 dev eth0 proto dhcp scope link src 192.168.1.117 metric 1024
 
         */
-        public static NetworkConfiguration GetActualNetworkConfiguration(string networkInterfaceName) {
-            var actualConfig = new NetworkConfiguration();
-
-            var ipAddressCommandResult = ExecuteLinuxCommand("ip", "address show " + networkInterfaceName);
-
-            var macAddressRegex = new Regex("link/ether (..:..:..:..:..:..) brd");
-            var macAddressMatch = macAddressRegex.Match(ipAddressCommandResult.Output);
-
-            if (macAddressMatch.Success) {
-                actualConfig.MacAddress = macAddressMatch.Groups[1].Value;
-            } else {
-                Log.Error($"Parsing MAC from output \"{ipAddressCommandResult.Output}\" failed.");
-            }
-
-            var dhcpAddressRegex = new Regex(@"inet ([0-9]*\.[0-9]*.[0-9]*.[0-9]*)\/(..).*scope global dynamic " + networkInterfaceName);
-            var dhcpAddressMatch = dhcpAddressRegex.Match(ipAddressCommandResult.Output);
-
-            if (dhcpAddressMatch.Success) {
-                actualConfig.IsDhcpEnabled = true;
-                actualConfig.IpAddress = IPAddress.Parse(dhcpAddressMatch.Groups[1].Value);
-
-                var subnetBitCount = int.Parse(dhcpAddressMatch.Groups[2].Value);
-                actualConfig.SubnetMask = ConvertBitsCountToAddress(subnetBitCount);
-            } else {
-                var staticAddressRegex = new Regex(@"inet ([0-9]*\.[0-9]*.[0-9]*.[0-9]*)\/(..).*scope global " + networkInterfaceName);
-                var staticAddressMatch = staticAddressRegex.Match(ipAddressCommandResult.Output);
-
-                if (staticAddressMatch.Success) {
-                    actualConfig.IsDhcpEnabled = false;
-                    actualConfig.IpAddress = IPAddress.Parse(staticAddressMatch.Groups[1].Value);
-
-                    var subnetBitCount = int.Parse(staticAddressMatch.Groups[2].Value);
-                    actualConfig.SubnetMask = ConvertBitsCountToAddress(subnetBitCount);
-                } else {
-                    var dhcpFallbackAddressRegex = new Regex(@"inet ([0-9]*\.[0-9]*.[0-9]*.[0-9]*)\/(..).*scope link " + networkInterfaceName);
-                    var dhcpFallbackAddressMatch = dhcpFallbackAddressRegex.Match(ipAddressCommandResult.Output);
-
-                    if (dhcpFallbackAddressMatch.Success) {
-                        actualConfig.IsDhcpEnabled = true;
-                        actualConfig.IpAddress = IPAddress.Parse(dhcpFallbackAddressMatch.Groups[1].Value);
-
-                        var subnetBitCount = int.Parse(dhcpFallbackAddressMatch.Groups[2].Value);
-                        actualConfig.SubnetMask = ConvertBitsCountToAddress(subnetBitCount);
-                    }
-                }
-            }
-
-            var iprCommandOutput = ExecuteLinuxCommand("ip", "r");
-            var gatewayRegex = new Regex(@"default via ([0-9]*\.[0-9]*.[0-9]*.[0-9]*) dev " + networkInterfaceName);
-            var gatewayMatch = gatewayRegex.Match(iprCommandOutput.Output);
-
-            if (gatewayMatch.Success) {
-                actualConfig.GatewayAddress = IPAddress.Parse(gatewayMatch.Groups[1].Value);
-            } else {
-                actualConfig.GatewayAddress = IPAddress.Parse("0.0.0.0");
-            }
-
-            return actualConfig;
-        }
-
         private static IPAddress ConvertBitsCountToAddress(int bitCount) {
             byte[] addressBytes = { 0xFF, 0xFF, 0xFF, 0xFF };
             var emptyBytes = (32 - bitCount) / 8;
@@ -193,31 +221,6 @@ namespace LightConversion.Protocols.LcFind {
 
             var ipAddress = new IPAddress(addressBytes);
             return ipAddress;
-        }
-
-        public static (int ExitCode, string Output) ExecuteLinuxCommand(string fileName, string arguments) {
-            int exitCode;
-            string output;
-
-            using (var process = new Process()) {
-                process.StartInfo.FileName = fileName;
-                process.StartInfo.Arguments = arguments;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardOutput = true;
-
-                try {
-                    process.Start();
-                    output = process.StandardOutput.ReadToEnd();
-                    process.WaitForExit();
-                    exitCode = process.ExitCode;
-                } catch (Exception ex) {
-                    Log.Error(ex, $"Starting process \"{fileName}\" with arguments \"{arguments}\" failed with exception. Probably such linux command doesn't exist.");
-                    exitCode = -1;
-                    output = "";
-                }
-            }
-
-            return (exitCode, output);
         }
     }
 }
