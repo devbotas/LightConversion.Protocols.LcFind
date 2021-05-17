@@ -87,6 +87,8 @@ namespace LightConversion.Protocols.LcFind {
 
             _tryGetNetworkConfigurationDelegate(out var config);
             _hwAddress = config.MacAddress;
+
+            _isInitialized = true;
         }
     }
 }

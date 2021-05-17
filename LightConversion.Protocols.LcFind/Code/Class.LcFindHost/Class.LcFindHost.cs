@@ -13,6 +13,7 @@ namespace LightConversion.Protocols.LcFind {
     public partial class LcFindHost : IDisposable {
         private static readonly Logger Log = LogManager.GetLogger(nameof(LcFindHost));
         private readonly CancellationTokenSource _globalCancellationTokenSource = new();
+        private bool _isInitialized;
         private readonly ConcurrentQueue<ClientRawMessage> _udpReceiveQueue = new();
         private readonly ConcurrentQueue<ClientRawMessage> _udpSendQueue = new();
         private DateTime _confirmationEnd = new(2020, 01, 1);
