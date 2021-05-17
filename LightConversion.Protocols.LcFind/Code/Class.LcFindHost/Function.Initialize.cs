@@ -8,6 +8,11 @@ using System.Threading.Tasks;
 
 namespace LightConversion.Protocols.LcFind {
     public partial class LcFindHost {
+        /// <summary>
+        /// Initializes a <see cref="LcFindHost"/> instance. 
+        /// </summary>
+        /// <param name="trySetNetworkConfigurationDelegate">A delegate function which actually sets the network configuration. It is widely platform dependent. If they work on your system, you may use methods from <see cref="LinuxNetworkHelpers"/> and <see cref="WindowsNetworkHelpers"/>, otherwise you may have to implement your own.</param>
+        /// <param name="tryGetNetworkConfigurationDelegate">A delegate function which actually reads the network configuration. It is widely platform dependent. If they work on your system, you may use methods from <see cref="LinuxNetworkHelpers"/> and <see cref="WindowsNetworkHelpers"/>, otherwise you may have to implement your own.</param>
         public void Initialize(TrySetNetworkConfigurationDelegate trySetNetworkConfigurationDelegate, TryGetNetworkConfigurationDelegate tryGetNetworkConfigurationDelegate) {
             _trySetNetworkConfigurationDelegate = trySetNetworkConfigurationDelegate;
             _tryGetNetworkConfigurationDelegate = tryGetNetworkConfigurationDelegate;

@@ -3,6 +3,9 @@
 
 namespace LightConversion.Protocols.LcFind {
     public partial class LcFindHost {
+        /// <summary>
+        /// Enables IP reconfiguration.
+        /// </summary>
         public void EnableReconfiguration() {
             if (ActualStatus == Status.Disabled) {
                 _targetStatus = Status.Ready;

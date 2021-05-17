@@ -3,6 +3,9 @@
 
 namespace LightConversion.Protocols.LcFind {
     public partial class LcFindHost {
+        /// <summary>
+        /// Disables IP address reconfiguration. FINDReq messages will still be processed.
+        /// </summary>
         public void DisableReconfiguration() {
             _targetStatus = Status.Disabled;
         }

@@ -3,6 +3,9 @@
 
 namespace LightConversion.Protocols.LcFind {
     public partial class LcFindHost {
+        /// <summary>
+        /// Disposes the host (obviously).
+        /// </summary>
         public void Dispose() {
             _globalCancellationTokenSource.Cancel();
             _listeningSocket.Dispose();
