@@ -13,40 +13,15 @@ using System.Threading.Tasks;
 using LightConversion.Protocols.LcFind;
 using SimpleMvvmToolkit;
 
-namespace TestClient {
+namespace LcFindDeviceDetector {
     public class MirandaViewModel : ViewModelBase<MirandaViewModel>, IDisposable {
         private List<DeviceDataViewModel> _detectedDevices = new List<DeviceDataViewModel>();
-        public List<DeviceDataViewModel> DetectedDevices {
-            get { return _detectedDevices; }
-            set {
-                if (_detectedDevices == value) return;
-
-                _detectedDevices = value;
-                NotifyPropertyChanged(m => m.DetectedDevices);
-            }
-        }
-
-        private DeviceDataViewModel _selectedDevice = new DeviceDataViewModel();
-        public DeviceDataViewModel SelectedDevice {
-            get { return _selectedDevice; }
-            set {
-                if (_selectedDevice == value) return;
-
-                _selectedDevice = value;
-                NotifyPropertyChanged(m => m.SelectedDevice);
-            }
-        }
-
+        private bool _isSaveCommandBusy;
+        private bool _isScanCommandBusy;
         private bool _noDevicesDetected;
-        public bool NoDevicesDetected {
-            get { return _noDevicesDetected; }
-            set {
-                if (_noDevicesDetected == value) return;
-
-                _noDevicesDetected = value;
-                NotifyPropertyChanged(m => m.NoDevicesDetected);
-            }
-        }
+        private DelegateCommand<DeviceDataViewModel> _saveCommand;
+        private DelegateCommand _scanCommand;
+        private DeviceDataViewModel _selectedDevice = new DeviceDataViewModel();
 
         public MirandaViewModel() {
             if (this.IsInDesignMode()) {
@@ -66,7 +41,25 @@ namespace TestClient {
             }
         }
 
-        private bool _isScanCommandBusy;
+        public List<DeviceDataViewModel> DetectedDevices {
+            get { return _detectedDevices; }
+            set {
+                if (_detectedDevices == value) return;
+
+                _detectedDevices = value;
+                NotifyPropertyChanged(m => m.DetectedDevices);
+            }
+        }
+        public bool IsSaveCommandBusy {
+            get { return _isSaveCommandBusy; }
+            set {
+                if (_isSaveCommandBusy == value) return;
+
+                _isSaveCommandBusy = value;
+                NotifyPropertyChanged(m => m.IsSaveCommandBusy);
+            }
+        }
+
         public bool IsScanCommandBusy {
             get { return _isScanCommandBusy; }
             set {
@@ -77,7 +70,49 @@ namespace TestClient {
             }
         }
 
-        private DelegateCommand _scanCommand;
+        public bool NoDevicesDetected {
+            get { return _noDevicesDetected; }
+            set {
+                if (_noDevicesDetected == value) return;
+
+                _noDevicesDetected = value;
+                NotifyPropertyChanged(m => m.NoDevicesDetected);
+            }
+        }
+
+        public DelegateCommand<DeviceDataViewModel> SaveCommand {
+            get {
+                if (_saveCommand != null) return _saveCommand;
+
+                _saveCommand = new DelegateCommand<DeviceDataViewModel>(async parameter => {
+                    IsSaveCommandBusy = true;
+
+                    if (parameter.TargetIsUsingDhcp) {
+                        ReconfigureDeviceWithDhcp(parameter.ActualDescription.MacAddress, parameter.LookerIpAddress);
+                    }
+
+                    if (parameter.TargetIsUsingStaticIp) {
+                        ReconfigureDeviceWithStaticIp(parameter.ActualDescription.MacAddress, parameter.LookerIpAddress, parameter.TargetIpAddress, parameter.TargetSubnetMask, parameter.TargetGatewayAddress);
+                    }
+
+                    await Task.Delay(10000);
+
+                    IsSaveCommandBusy = false;
+
+                    if (ScanCommand.CanExecute(null)) ScanCommand.Execute(null);
+                }, parameter => IsSaveCommandBusy == false);
+
+                PropertyChanged += (sender, e) => {
+                    switch (e.PropertyName) {
+                        case nameof(IsSaveCommandBusy):
+                            SaveCommand.RaiseCanExecuteChanged();
+                            break;
+                    }
+                };
+                return _saveCommand;
+            }
+        }
+
         public DelegateCommand ScanCommand {
             get {
                 if (_scanCommand != null) return _scanCommand;
@@ -132,57 +167,15 @@ namespace TestClient {
             }
         }
 
-        private bool _isSaveCommandBusy;
-        public bool IsSaveCommandBusy {
-            get { return _isSaveCommandBusy; }
+        public DeviceDataViewModel SelectedDevice {
+            get { return _selectedDevice; }
             set {
-                if (_isSaveCommandBusy == value) return;
+                if (_selectedDevice == value) return;
 
-                _isSaveCommandBusy = value;
-                NotifyPropertyChanged(m => m.IsSaveCommandBusy);
+                _selectedDevice = value;
+                NotifyPropertyChanged(m => m.SelectedDevice);
             }
         }
-
-        private DelegateCommand<DeviceDataViewModel> _saveCommand;
-        public DelegateCommand<DeviceDataViewModel> SaveCommand {
-            get {
-                if (_saveCommand != null) return _saveCommand;
-
-                _saveCommand = new DelegateCommand<DeviceDataViewModel>(async parameter => {
-                    IsSaveCommandBusy = true;
-
-                    if (parameter.TargetIsUsingDhcp) {
-                        ReconfigureDeviceWithDhcp(parameter.ActualDescription.MacAddress, parameter.LookerIpAddress);
-                    }
-
-                    if (parameter.TargetIsUsingStaticIp) {
-                        ReconfigureDeviceWithStaticIp(parameter.ActualDescription.MacAddress, parameter.LookerIpAddress, parameter.TargetIpAddress, parameter.TargetSubnetMask, parameter.TargetGatewayAddress);
-                    }
-
-                    await Task.Delay(10000);
-
-                    IsSaveCommandBusy = false;
-
-                    if (ScanCommand.CanExecute(null)) ScanCommand.Execute(null);
-                }, parameter => IsSaveCommandBusy == false);
-
-                PropertyChanged += (sender, e) => {
-                    switch (e.PropertyName) {
-                        case nameof(IsSaveCommandBusy):
-                            SaveCommand.RaiseCanExecuteChanged();
-                            break;
-                    }
-                };
-                return _saveCommand;
-            }
-        }
-
-        public void Initialize() { }
-
-        public void Dispose() {
-#warning Nice implementation!
-        }
-
         public static List<(string NetworkInterface, IPAddress IpAddress)> GetAllLocalIpAddresses() {
             var localIpAddresses = new List<(string NetworkInterface, IPAddress IpAddress)>();
 
@@ -206,6 +199,23 @@ namespace TestClient {
             return localIpAddresses;
         }
 
+        public static void ReconfigureDeviceWithDhcp(string actualMacAddress, string localAdapterAddress) {
+            try {
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, true);
+
+                    socket.Bind(new IPEndPoint(IPAddress.Parse(localAdapterAddress), 50022));
+
+                    var messageToSend = Encoding.UTF8.GetBytes($"CONFReq=1;HWADDR={actualMacAddress};NetworkMode=DHCP\0");
+                    socket.SendTo(messageToSend, new IPEndPoint(IPAddress.Broadcast, 50022));
+                }
+            } catch (SocketException ex) {
+                // TODO: logging.
+                Debug.Print(ex.ToString());
+            }
+        }
+
         public static void ReconfigureDeviceWithStaticIp(string actualMacAddress, string localAdapterAddress, string newIpAddress, string newSubnetMask, string newGatewayAddress) {
             try {
                 using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
@@ -223,21 +233,10 @@ namespace TestClient {
             }
         }
 
-        public static void ReconfigureDeviceWithDhcp(string actualMacAddress, string localAdapterAddress) {
-            try {
-                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
-                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, true);
-
-                    socket.Bind(new IPEndPoint(IPAddress.Parse(localAdapterAddress), 50022));
-
-                    var messageToSend = Encoding.UTF8.GetBytes($"CONFReq=1;HWADDR={actualMacAddress};NetworkMode=DHCP\0");
-                    socket.SendTo(messageToSend, new IPEndPoint(IPAddress.Broadcast, 50022));
-                }
-            } catch (SocketException ex) {
-                // TODO: logging.
-                Debug.Print(ex.ToString());
-            }
+        public void Dispose() {
+#warning Nice implementation!
         }
+
+        public void Initialize() { }
     }
 }

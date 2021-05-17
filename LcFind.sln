@@ -13,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionIt
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HostTesterApp", "HostTesterApp\HostTesterApp.csproj", "{D63D94ED-957D-4D07-AA5A-28499B01AD39}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClientTesterApp", "ClientTesterApp\ClientTesterApp.csproj", "{111EC8FB-999B-4D48-915B-31551178B013}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LcFindDeviceDetectorApp", "LcFindDeviceDetectorApp\LcFindDeviceDetectorApp.csproj", "{111EC8FB-999B-4D48-915B-31551178B013}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

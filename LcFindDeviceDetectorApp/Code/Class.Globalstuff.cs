@@ -3,7 +3,7 @@
 
 using System;
 
-namespace TestClient {
+namespace LcFindDeviceDetector {
     public class GlobalStuff : IDisposable {
         public static GlobalStuff Instance { get; } = new GlobalStuff();
 

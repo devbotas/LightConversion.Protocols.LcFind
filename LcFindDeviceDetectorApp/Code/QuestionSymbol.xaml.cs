@@ -3,9 +3,9 @@
 
 using System.Windows.Controls;
 
-namespace TestClient {
-    public partial class EditorView : UserControl {
-        public EditorView() {
+namespace LcFindDeviceDetector {
+    public partial class QuestionSymbol : UserControl {
+        public QuestionSymbol() {
             InitializeComponent();
         }
     }

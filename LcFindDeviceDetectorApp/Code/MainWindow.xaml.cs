@@ -4,7 +4,7 @@
 using System.ComponentModel;
 using System.Windows;
 
-namespace TestClient {
+namespace LcFindDeviceDetector {
     public partial class MainWindow {
         public MainWindow() {
             InitializeComponent();

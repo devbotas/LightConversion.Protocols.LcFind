@@ -5,11 +5,17 @@ using System.Collections.Generic;
 using LightConversion.Protocols.LcFind;
 using SimpleMvvmToolkit;
 
-namespace TestClient {
+namespace LcFindDeviceDetector {
     public class DeviceDataViewModel : ViewModelBase<DeviceDataViewModel> {
-        public List<string> AvailableNetworkModes { get; } = new List<string> { "DHCP", "Static" };
+        private DeviceDescription _actualDescription = new();
+        private bool _isReachable;
+        private string _lookerIpAddress;
+        private string _lookerNetworkInterfaceName;
+        private string _targetGatewayAddress;
+        private string _targetIpAddress;
+        private string _targetNetworkMode;
+        private string _targetSubnetMask;
 
-        private DeviceDescription _actualDescription = new DeviceDescription();
         public DeviceDescription ActualDescription {
             get { return _actualDescription; }
             set {
@@ -28,7 +34,7 @@ namespace TestClient {
             }
         }
 
-        private bool _isReachable;
+        public List<string> AvailableNetworkModes { get; } = new List<string> { "DHCP", "Static" };
         public bool IsReachable {
             get { return _isReachable; }
             set {
@@ -38,8 +44,10 @@ namespace TestClient {
                 NotifyPropertyChanged(m => m.IsReachable);
             }
         }
+        public bool IsUsingDhcp => ActualDescription.NetworkMode == "DHCP";
 
-        private string _lookerIpAddress;
+        public bool IsUsingStaticIp => ActualDescription.NetworkMode == "Static";
+
         public string LookerIpAddress {
             get { return _lookerIpAddress; }
             set {
@@ -49,8 +57,6 @@ namespace TestClient {
                 NotifyPropertyChanged(m => m.LookerIpAddress);
             }
         }
-
-        private string _lookerNetworkInterfaceName;
         public string LookerNetworkInterfaceName {
             get { return _lookerNetworkInterfaceName; }
             set {
@@ -60,8 +66,30 @@ namespace TestClient {
                 NotifyPropertyChanged(m => m.LookerNetworkInterfaceName);
             }
         }
+        public string TargetGatewayAddress {
+            get { return _targetGatewayAddress; }
+            set {
+                if (_targetGatewayAddress == value) return;
 
-        private string _targetNetworkMode;
+                _targetGatewayAddress = value;
+                NotifyPropertyChanged(m => m.TargetGatewayAddress);
+            }
+        }
+
+        public string TargetIpAddress {
+            get { return _targetIpAddress; }
+            set {
+                if (_targetIpAddress == value) return;
+
+                _targetIpAddress = value;
+                NotifyPropertyChanged(m => m.TargetIpAddress);
+            }
+        }
+
+        public bool TargetIsUsingDhcp => TargetNetworkMode == "DHCP";
+
+        public bool TargetIsUsingStaticIp => TargetNetworkMode == "Static";
+
         public string TargetNetworkMode {
             get { return _targetNetworkMode; }
             set {
@@ -73,19 +101,6 @@ namespace TestClient {
                 NotifyPropertyChanged(m => m.TargetIsUsingStaticIp);
             }
         }
-
-        private string _targetIpAddress;
-        public string TargetIpAddress {
-            get { return _targetIpAddress; }
-            set {
-                if (_targetIpAddress == value) return;
-
-                _targetIpAddress = value;
-                NotifyPropertyChanged(m => m.TargetIpAddress);
-            }
-        }
-
-        private string _targetSubnetMask;
         public string TargetSubnetMask {
             get { return _targetSubnetMask; }
             set {
@@ -95,22 +110,5 @@ namespace TestClient {
                 NotifyPropertyChanged(m => m.TargetSubnetMask);
             }
         }
-
-        private string _targetGatewayAddress;
-        public string TargetGatewayAddress {
-            get { return _targetGatewayAddress; }
-            set {
-                if (_targetGatewayAddress == value) return;
-
-                _targetGatewayAddress = value;
-                NotifyPropertyChanged(m => m.TargetGatewayAddress);
-            }
-        }
-
-        public bool IsUsingDhcp => ActualDescription.NetworkMode == "DHCP";
-        public bool IsUsingStaticIp => ActualDescription.NetworkMode == "Static";
-
-        public bool TargetIsUsingDhcp => TargetNetworkMode == "DHCP";
-        public bool TargetIsUsingStaticIp => TargetNetworkMode == "Static";
     }
 }
