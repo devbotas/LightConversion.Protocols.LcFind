@@ -28,20 +28,20 @@ And minimal mandatory response:
 FIND=1;SN={serialNumber};HWADDR={MAC};DeviceName={DeviceName};
 ```
 
-Where mandatory structure of "FINDreq" is:
+Where mandatory structure of ```FINDreq``` is:
 
 Key|Valid values|Description
 ---|------------|-----------
-FINDReq|1|Find request version 1.
+```FINDReq```|1|Find request version 1.
 
-And mandatory structure of "FIND" is:
+And mandatory structure of ```FIND``` is:
 
 Key|Valid values|Description
 ---|------------|-----------
-FIND|1|Indicates that this is a response to FINDReq=1; message.
-SN|Any string without characters "=" or ";"|Serial number of the device. Must be unique.
-HWADDR|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device.
-DeviceName|Any string without characters "=" or ";"|Name of the device which should help user to know what kind of device this is. There can be multiple devices with the same name.
+```FIND```|1|Indicates that this is a response to FINDReq=1; message.
+```SN```|Any string without characters "=" or ";"|Serial number of the device. Must be unique.
+```HWADDR```|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device.
+```DeviceName```|Any string without characters "=" or ";"|Name of the device which should help user to know what kind of device this is. There can be multiple devices with the same name.
 
 # LC-FIND extension
 
@@ -66,13 +66,13 @@ FIND=1;SN={serialNumber};HWADDR={MAC};DeviceName={DeviceName};
 
 ## Adding additional data in responses
 
-LC-FIND can be used to change configuration of the device, so additional data fields had to be added to FIND=1 response so that user could know full information about current device configuration:
+LC-FIND can be used to change configuration of the device, so additional data fields had to be added to ```FIND=1``` response so that user could know full information about current device configuration:
 
 Key|Valid values|Description
 ---|------------|-----------
-NetworkMode|"DHCP" or "Static"|DHCP means that device is a DHCP client and receives its IP configuration dynamically from the router. Static means that device assigns itself a custom and configurable IP address, mask and gateway. 
-Mask|IP address string in format "x.x.x.x"|Currently used IPv4 subnet mask.
-Gateway|IP address string in format "x.x.x.x"|Currently used IPv4 subnet mask.
+```NetworkMode```|```DHCP``` or ```Static```|```DHCP``` means that device is a DHCP client and receives its IP configuration dynamically from the router. ```Static``` means that device assigns itself a custom and configurable IP address, mask and gateway. 
+```Mask```|IP address string in format "x.x.x.x"|Currently used IPv4 subnet mask.
+```Gateway```|IP address string in format "x.x.x.x"|Currently used IPv4 subnet mask.
 
 So a typical response now looks like this:
 
@@ -82,7 +82,7 @@ FIND=1;SN=123456;HWADDR=AA:BB:CC:DD:EE:FF;DeviceName=Laser;NetworkMode=Static;Ma
 
 # New CONFReq and CONF messages
 
-SEGGER FIND is only about detecting devices. LC-FIND add a CONFReq request and CONF response messages, which are used to change device's network configuration.
+SEGGER FIND is only about detecting devices. LC-FIND add a ```CONFReq``` request and ```CONF``` response messages, which are used to change device's network configuration.
 
 A typical successful command-response pair would like this:
 
@@ -94,22 +94,22 @@ If there was a problem of some sort, message exchange will look something like:
     CONFReq=1;HWADDR=AA:BB:CC:DD:EE:FF;NetworkMode=Static;IP=192.168.11.251;Mask=255.255.255.0;Gateway=0.0.0.0;
     CONF=1;HWADDR=AA:BB:CC:DD:EE:FF;Status=Ready;Result=Error-This IP address is reserved and cannot be used;
 
-Mandatory structure of "CONFReq" is:
+Mandatory structure of ```CONFReq``` is:
 
 Key|Valid values|Description
 ---|------------|-----------
-CONFReq|1|Request to change device configuration. Version 1.
-HWADDR|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device.
-NetworkMode|"DHCP" or "Static"|DHCP means that device is a DHCP client and receives its IP configuration dynamically from the router. Static means that device assigns itself a custom and configurable IP address, mask and gateway. 
-IP|IP address string in format "x.x.x.x"|New static IP address. Only relevant if NetworkMode=Static.
-Mask|IP address string in format "x.x.x.x"|New subnet mask. Only relevant if NetworkMode=Static.
-Gateway|IP address string in format "x.x.x.x"|New gateway address. Only relevant if NetworkMode=Static.
+```CONFReq```|1|Request to change device configuration. Version 1.
+```HWADDR```|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device.
+```NetworkMode```|```DHCP``` or ```Static```|```DHCP``` means that device is a DHCP client and receives its IP configuration dynamically from the router. ```Static``` means that device assigns itself a custom and configurable IP address, mask and gateway. 
+```IP```|IP address string in format "x.x.x.x"|New static IP address. Only relevant if ```NetworkMode``` is set to ```Static```.
+```Mask```|IP address string in format "x.x.x.x"|New subnet mask. Only relevant if ```NetworkMode``` is set to ```Static```.
+```Gateway```|IP address string in format "x.x.x.x"|New gateway address. Only relevant if ```NetworkMode``` is set to ```Static```.
 
 And then response fields are:
 
 Key|Valid values|Description
 ---|------------|-----------
-CONF|1|Indicates that this is a response to "CONFReq=1;" message.
-HWADDR|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device that processed CONFReq message.
-Status|"Ready", "AwaitingConfirmation", "Cooldown", "Disabled"|Ok - Reconfiguration succeeded. AwaitingConfirmation - Device waits for a physical confirmation to allow reconfiguration (e.g. a button press) (can be omitted if no means of physically confirming reconfiguration (e.g. a button) are present). Cooldown - Device is in a cooldown state and will not accept configuration requests for a while. Disabled - LC-FIND is disabled on host and it will not accept configuration request until enabled.
-Result|Any text string|Gives more information about errors. Actual content is not part of this specification.
+```CONF```|1|Indicates that this is a response to ```CONFReq=1;``` message.
+```HWADDR```|MAC address string in format AA:BB:CC:DD:EE:FF|MAC address of the device that processed ```CONFReq``` message.
+```Status```|```Ready```, ```AwaitingConfirmation```, ```Cooldown```, ```Disabled```|```Ready``` - Reconfiguration succeeded. ```AwaitingConfirmation``` - Device waits for a physical confirmation to allow reconfiguration (e.g. a button press) (can be omitted if no means of physically confirming reconfiguration (e.g. a button) are present). ```Cooldown``` - Device is in a cooldown state and will not accept configuration requests for a while. ```Disabled``` - LC-FIND is disabled on host and it will not accept configuration request until enabled.
+```Result```|Any text string|Gives more information about errors. Actual content is not part of this specification.
