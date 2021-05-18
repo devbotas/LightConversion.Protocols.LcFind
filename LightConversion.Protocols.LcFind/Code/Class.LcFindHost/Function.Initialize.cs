@@ -5,6 +5,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using NLog;
 
 namespace LightConversion.Protocols.LcFind {
     public partial class LcFindHost {
@@ -13,7 +14,9 @@ namespace LightConversion.Protocols.LcFind {
         /// </summary>
         /// <param name="trySetNetworkConfigurationDelegate">A delegate function which actually sets the network configuration. It is widely platform dependent. If they work on your system, you may use methods from <see cref="LinuxNetworkHelpers"/> and <see cref="WindowsNetworkHelpers"/>, otherwise you may have to implement your own.</param>
         /// <param name="tryGetNetworkConfigurationDelegate">A delegate function which actually reads the network configuration. It is widely platform dependent. If they work on your system, you may use methods from <see cref="LinuxNetworkHelpers"/> and <see cref="WindowsNetworkHelpers"/>, otherwise you may have to implement your own.</param>
-        public void Initialize(TrySetNetworkConfigurationDelegate trySetNetworkConfigurationDelegate, TryGetNetworkConfigurationDelegate tryGetNetworkConfigurationDelegate) {
+        public void Initialize(TryGetNetworkConfigurationDelegate tryGetNetworkConfigurationDelegate, TrySetNetworkConfigurationDelegate trySetNetworkConfigurationDelegate, Logger logger = null) {
+            if (logger != null) { _log = logger; }
+
             _trySetNetworkConfigurationDelegate = trySetNetworkConfigurationDelegate;
             _tryGetNetworkConfigurationDelegate = tryGetNetworkConfigurationDelegate;
 
