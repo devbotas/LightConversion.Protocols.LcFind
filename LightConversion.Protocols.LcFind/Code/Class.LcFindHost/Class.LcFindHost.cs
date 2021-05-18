@@ -13,13 +13,13 @@ namespace LightConversion.Protocols.LcFind {
     /// Provides LC-FIND host-side functionality.
     /// </summary>
     public partial class LcFindHost : IDisposable {
-        private static readonly Logger _log = LogManager.GetCurrentClassLogger();
-        private readonly CancellationTokenSource _globalCancellationTokenSource = new();
+        private Logger _log = LogManager.GetCurrentClassLogger();
+        private readonly CancellationTokenSource _globalCancellationTokenSource = new CancellationTokenSource();
         private bool _isInitialized;
-        private readonly ConcurrentQueue<ClientRawMessage> _udpReceiveQueue = new();
-        private readonly ConcurrentQueue<ClientRawMessage> _udpSendQueue = new();
-        private DateTime _confirmationEnd = new(2020, 01, 1);
-        private DateTime _cooldownEnd = new(2020, 01, 1);
+        private readonly ConcurrentQueue<ClientRawMessage> _udpReceiveQueue = new ConcurrentQueue<ClientRawMessage>();
+        private readonly ConcurrentQueue<ClientRawMessage> _udpSendQueue = new ConcurrentQueue<ClientRawMessage>();
+        private DateTime _confirmationEnd = new DateTime(2020, 01, 1);
+        private DateTime _cooldownEnd = new DateTime(2020, 01, 1);
         private string _hwAddress;
         private Socket _listeningSocket;
         private Status _targetStatus;
