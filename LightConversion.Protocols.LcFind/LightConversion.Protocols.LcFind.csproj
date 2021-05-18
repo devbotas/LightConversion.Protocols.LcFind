@@ -4,14 +4,20 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Version>0.4.0</Version>
+    <Version>1.0.0</Version>
     <Company>Light Conversion, UAB</Company>
     <Copyright>Copyright © 2021 Light Conversion, UAB</Copyright>
     <Authors>Light Conversion</Authors>
     <Product>LC-FIND protocol implementation.</Product>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
-    <AssemblyVersion>0.4.0.0</AssemblyVersion>
-    <FileVersion>0.4.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <PackageProjectUrl>https://github.com/light-conversion/LightConversion.Protocols.LcFind</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/light-conversion/LightConversion.Protocols.LcFind</RepositoryUrl>
+    <PackageTags>c# discovery network</PackageTags>
+    <PackageReleaseNotes>## [1.0.0] - 2021-05-18
+### Added
+- Initial release.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
