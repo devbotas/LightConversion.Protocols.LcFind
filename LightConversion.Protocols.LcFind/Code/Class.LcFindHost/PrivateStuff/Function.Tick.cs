@@ -34,6 +34,22 @@ namespace LightConversion.Protocols.LcFind {
                         _log.Debug($"Client sent a malformed CONFReq message. Result: {requestResult}.");
                         responseMessage = BuildConfReqResponseString(requestResult);
                         _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = receivedMessage.Endpoint });
+                        isOk = false;
+                    }
+
+                    if (isOk) {
+                        if (ActualStatus == Status.Cooldown) {
+                            _log.Info($"Host is in cooldown, so rejecting a CONFReq message.");
+                            responseMessage = BuildConfReqResponseString("Error-Host is in cooldown");
+                            _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = receivedMessage.Endpoint });
+                            _unansweredConfRequest = null;
+                        }
+                        if (ActualStatus == Status.AwaitingConfirmation) {
+                            _log.Info($"Host is already awaiting confirmation, so rejecting a CONFReq message.");
+                            responseMessage = BuildConfReqResponseString("Error-Host is already awaiting confirmation");
+                            _udpSendQueue.Enqueue(new ClientRawMessage { Payload = responseMessage, Endpoint = receivedMessage.Endpoint });
+                            _unansweredConfRequest = null;
+                        }
                     }
                 }
             }
